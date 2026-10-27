@@ -2,7 +2,7 @@
 
 A local, single-user application adapting [Dossier](https://github.com/AienTech/dossier) to the V5 resume workflow: profile-based knowledge, job discovery, verified tailoring, and application tracking.
 
-**Current status: M0 baseline in progress.** The existing Dossier interface and features are the starting point. Codex subscription execution, V5 LaTeX tailoring, the new KB/queue, and other V1 changes are planned, not delivered yet. See the [approved milestone plan](docs/V1_PLAN.md) and [upstream provenance](docs/UPSTREAM.md). Each milestone requires review before a push or further implementation.
+**Current status: M0 baseline ready for review.** The existing Dossier interface and features are the starting point. Codex subscription execution, V5 LaTeX tailoring, the new KB/queue, and other V1 changes are planned, not delivered yet. See the [approved milestone plan](docs/V1_PLAN.md) and [upstream provenance](docs/UPSTREAM.md). Each milestone requires review before a push or further implementation.
 
 ## Local setup
 

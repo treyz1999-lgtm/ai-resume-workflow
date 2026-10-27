@@ -165,9 +165,8 @@ jobs:
             test-results/
           retention-days: 7
 
-  # After both checks pass on main, or when its pull request passed them: the
-  # production image on GHCR, tagged with the commit SHA (and "main"). A
-  # version tag then tags it with the version.
+  # Validate the production image only. Publishing is deferred to the
+  # explicitly approved M7 release; milestone pushes must not publish images.
   image:
     name: Production image
     needs: [checked, check, e2e]
@@ -175,7 +174,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v7
 
@@ -185,17 +183,11 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: docker/build-push-action@v7
         with:
           context: .
           target: production
-          push: true
+          push: false
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:main

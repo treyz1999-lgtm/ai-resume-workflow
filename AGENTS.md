@@ -2,7 +2,7 @@
 
 ## Scope and milestone gates
 
-Implement the approved [V1 plan](docs/V1_PLAN.md). Current milestone: **M0, in progress**. M1-M7 are unstarted. Do not claim a planned feature works before implementing and verifying it.
+Implement the approved [V1 plan](docs/V1_PLAN.md). Current milestone: **M0, awaiting user review**. M1-M7 are unstarted. Do not claim a planned feature works before implementing and verifying it.
 
 Every milestone ends with a review pause. Present the working feature, local diff, actual check results, useful screenshots/artifacts, and limitations. **Do not push, create the GitHub fork, or start the next milestone until the user approves.** The first milestone approval authorizes fork creation; subsequent approval authorizes its push and continuation. Local commits for integration/review are permitted. Only the coordinator performs pushes.
 

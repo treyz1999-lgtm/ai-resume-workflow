@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 in progress; M1–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 ready for review; M1–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -33,10 +33,10 @@ Codex uses app-server with ChatGPT authentication. API/local models use applicat
 
 Owners: coordinator and infrastructure, with temporary documentation/privacy ownership.
 
-- [ ] Prepare checkout at the pinned commit; document scope, checklist, ownership, and provenance.
-- [ ] Run Dossier locally and establish test/build baseline.
-- [ ] Configure persistent data and ignored runtime directories.
-- [ ] Disable upstream telemetry and upstream-specific update prompts.
+- [x] Prepare checkout at the pinned commit; document scope, checklist, ownership, and provenance.
+- [x] Run Dossier locally and establish test/build baseline.
+- [x] Configure persistent data and ignored runtime directories.
+- [x] Disable upstream telemetry and upstream-specific update prompts.
 
 Gate: app starts locally, failures are documented, private files stay outside Git, and diff/launch instructions are reviewable. After approval only: create fork, retain `upstream`, configure `origin`, push approved baseline.
 
