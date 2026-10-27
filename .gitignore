@@ -26,6 +26,11 @@
 
 # DOSSIER_DATA_DIR in development (backups, temporary downloads)
 /data/
+/backups/
+/runtime/
+/private/
+/.codex/
+/.worktrees/
 
 # debug
 npm-debug.log*

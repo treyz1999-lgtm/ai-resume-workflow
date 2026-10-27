@@ -1,13 +1,13 @@
+name: ai-resume-workflow
+
 services:
   db:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-dossier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/setup-local.mjs first}
       POSTGRES_DB: ${POSTGRES_DB:-dossier}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       # Postgres 18+ keeps data in a versioned subdirectory, so mount the parent.
       - pgdata:/var/lib/postgresql
@@ -24,11 +24,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    env_file: .env
     environment:
-      # Overrides the localhost URL in .env, which is meant for tools run on the host.
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dossier}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dossier}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dossier}
+      DOSSIER_DATA_DIR: /data
+      DOSSIER_TELEMETRY: "off"
+      NEXT_TELEMETRY_DISABLED: "1"
     ports:
-      - "3000:3000"
+      - "127.0.0.1:${DOSSIER_PORT:-3000}:3000"
     volumes:
       - .:/app
       # Keep the container's own (Debian) node_modules and build cache
@@ -36,6 +39,9 @@ services:
       # through docker/bin/yarn persist, whichever container ran them.
       - node_modules:/app/node_modules
       - /app/.next
+      - ./data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # Prisma Studio on http://localhost:5555. Not started by `docker compose up`;
   # run `docker compose up -d studio` when you want it.
@@ -48,7 +54,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dossier}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dossier}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dossier}
     # Studio has no login and can edit every row, so keep it off the network.
     ports:
       - "127.0.0.1:5555:5555"

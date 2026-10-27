@@ -1,38 +1,36 @@
-# Dossier with Docker Compose (see the installation guide, https://github.com/AienTech/dossier/wiki). Save this
-# file as compose.yml in a folder of its own, put POSTGRES_PASSWORD,
-# DOSSIER_PASSWORD (a hash of your password, from `docker run --rm -it
-# ghcr.io/aientech/dossier hash-password`) and DOSSIER_SECRET in a .env file
-# next to it, then:
-#
-#   docker compose up -d
-#
-# Add COMPOSE_PROFILES=ai to .env to run Ollama for a local model as well.
+# Local production build for AI Resume Workflow. Run setup first, then:
+# docker compose -f compose.production.yml up -d --build
+# Add COMPOSE_PROFILES=ai to .env to run Ollama as well.
+
+name: ai-resume-workflow
 
 services:
   db:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: dossier
+      POSTGRES_USER: ${POSTGRES_USER:-dossier}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: dossier
+      POSTGRES_DB: ${POSTGRES_DB:-dossier}
     volumes:
       # Postgres 18+ keeps data in a versioned subdirectory, so mount the parent.
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dossier -d dossier"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   app:
-    image: ${DOSSIER_IMAGE:-ghcr.io/aientech/dossier:latest}
+    build:
+      context: .
+      target: production
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://dossier:${POSTGRES_PASSWORD}@db:5432/dossier
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dossier}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dossier}
       DOSSIER_PASSWORD: ${DOSSIER_PASSWORD:?Set DOSSIER_PASSWORD in .env to a hash from hash-password}
       DOSSIER_SECRET: ${DOSSIER_SECRET:?Set DOSSIER_SECRET in .env}
       DOSSIER_BACKUP_RETENTION_DAYS: ${DOSSIER_BACKUP_RETENTION_DAYS:-}
@@ -43,8 +41,8 @@ services:
       DOSSIER_AI_MODEL: ${DOSSIER_AI_MODEL:-}
       DOSSIER_AI_KEY: ${DOSSIER_AI_KEY:-}
       DOSSIER_AI_TIMEOUT_SECONDS: ${DOSSIER_AI_TIMEOUT_SECONDS:-}
-      # The daily usage ping: unset, Dossier asks after sign-in; on or off answers in advance (see Privacy in the wiki).
-      DOSSIER_TELEMETRY: ${DOSSIER_TELEMETRY:-}
+      DOSSIER_TELEMETRY: "off"
+      NEXT_TELEMETRY_DISABLED: "1"
       # Defaults for Settings → Job search.
       DOSSIER_JOBS_SOURCE: ${DOSSIER_JOBS_SOURCE:-}
       DOSSIER_JSEARCH_KEY: ${DOSSIER_JSEARCH_KEY:-}
@@ -56,11 +54,11 @@ services:
       DOSSIER_GOOGLE_CLIENT_SECRET: ${DOSSIER_GOOGLE_CLIENT_SECRET:-}
       # The address Dossier is reached at, for Google's redirect.
       DOSSIER_PUBLIC_URL: ${DOSSIER_PUBLIC_URL:-}
-    # Only on the server itself: put a reverse proxy with HTTPS in front.
+    # Local access only.
     ports:
       - "127.0.0.1:${DOSSIER_PORT:-3000}:3000"
     volumes:
-      - data:/data
+      - ./data:/data
     # Room for Chromium, which prints the PDFs.
     mem_limit: 1g
     # Lets http://host.docker.internal reach Ollama (:11434) or LM Studio
@@ -79,5 +77,4 @@ services:
 
 volumes:
   pgdata:
-  data:
   ollama:

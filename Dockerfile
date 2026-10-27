@@ -7,6 +7,7 @@ WORKDIR /app
 # Swap the image's bundled Yarn 1 for the version pinned in package.json (packageManager).
 RUN corepack enable
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV NEXT_TELEMETRY_DISABLED=1
 # Where Playwright keeps Chromium: in the image, not in a user's home or a volume.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
@@ -85,6 +86,10 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
-COPY docker/start.sh ./start.sh
+USER root
+COPY --chown=node:node --chmod=755 docker/start.sh ./start.sh
+# Windows checkouts may use CRLF; the Linux entrypoint must use LF.
+RUN sed -i 's/\r$//' ./start.sh
+USER node
 # Migrations, the seed, then the server (E12-3).
 CMD ["./start.sh"]
