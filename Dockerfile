@@ -13,7 +13,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Development image: dependencies are baked in, source is bind-mounted by compose.yml.
 FROM base AS dev
-RUN chown node:node /app
+RUN mkdir -p /data && chown node:node /app /data
 USER node
 COPY --chown=node:node package.json yarn.lock .yarnrc.yml ./
 RUN yarn install --immutable && mkdir .next

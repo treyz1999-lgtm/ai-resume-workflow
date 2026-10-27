@@ -1,6 +1,6 @@
 // Run with Node 24.7+ (or the Node 24 Docker image). Never overwrites .env.
 import { randomBytes } from "node:crypto";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hashPassword } from "../src/lib/auth/password-hash.ts";
@@ -69,8 +69,7 @@ async function main() {
     "DOSSIER_PORT=3000",
     "",
   ].join("\n"), { flag: "wx", mode: 0o600 });
-  await mkdir(resolve(root, "data"), { recursive: true });
-  process.stdout.write("Created .env and data/. Secrets were not printed. Start with docker compose up -d --build.\n");
+  process.stdout.write("Created .env. Docker manages persistent application data. Secrets were not printed. Start with docker compose up -d --build.\n");
 }
 
 main().catch((error) => {
