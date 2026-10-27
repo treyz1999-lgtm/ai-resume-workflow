@@ -14,7 +14,7 @@ Create local configuration with Node 24.7 or newer:
 node scripts/setup-local.mjs
 ```
 
-The script prompts for an application password twice without displaying it, generates a password hash and random database/session secrets, and creates `.env` and `data/`. It refuses to overwrite an existing `.env`. Do not commit or share this file.
+The script prompts for an application password twice without displaying it, generates a password hash and random database/session secrets, and creates `.env`. It refuses to overwrite an existing `.env`. Do not commit or share this file.
 
 Without a host Node installation, run setup through Docker. PowerShell:
 
@@ -25,7 +25,7 @@ docker run --rm -it --mount "type=bind,source=$($PWD.Path),target=/app" -w /app 
 macOS/Linux shell:
 
 ```sh
-docker run --rm -it --mount "type=bind,source=$(pwd),target=/app" -w /app node:24-trixie-slim node scripts/setup-local.mjs
+docker run --rm -it --user "$(id -u):$(id -g)" --mount "type=bind,source=$(pwd),target=/app" -w /app node:24-trixie-slim node scripts/setup-local.mjs
 ```
 
 Start the development application:
@@ -44,7 +44,7 @@ docker compose -f compose.production.yml up -d --build
 
 Run only one configuration at a time: both use the same project name and database volume. Stop the current configuration before switching (`docker compose down`, or its `-f compose.production.yml` equivalent). Do not add `--volumes`: it deletes the stored database. Ordinary `stop`/`start` preserves data; use the same Compose file each time.
 
-Database records persist in the `pgdata` Docker volume. Application files persist in host `data/`. Local private/runtime/auth/backup directories are ignored by Git and Docker build context. Keep real personal records outside source fixtures. M7 will introduce the planned backup/restore system; current upstream backup behavior is not that completed feature.
+Database records persist in the `pgdata` Docker volume. Application files persist in the `appdata` Docker volume, which lets the container manage file ownership consistently across operating systems. Both volumes are shared by the development and production configurations. Local private/runtime/auth/backup directories are ignored by Git and Docker build context. Keep real personal records outside source fixtures. M7 will introduce the host-visible backup folder and planned backup/restore system; current upstream backup behavior is not that completed feature.
 
 ## Models and integrations
 
