@@ -1,6 +1,7 @@
 import "server-only";
 
 import { env } from "@/lib/env";
+import { upstreamServicesEnabled } from "@/lib/fork-policy";
 import { logServerError } from "@/lib/log";
 import { loadSettings, saveSettings } from "@/lib/settings-data";
 import type { SettingsData } from "@/lib/settings";
@@ -37,6 +38,7 @@ const isReleasePage = (url: string) => url.startsWith(`https://github.com/${RELE
  * slow, or an answer that doesn't look like a release).
  */
 export async function latestRelease(fetchImpl: typeof fetch = fetch, base = env.DOSSIER_UPDATES_TEST_BASE_URL): Promise<Release | null> {
+  if (!upstreamServicesEnabled()) return null;
   try {
     const response = await fetchImpl(`${base ?? "https://api.github.com"}/repos/${RELEASES_REPOSITORY}/releases/latest`, {
       headers: { accept: "application/vnd.github+json", "user-agent": "Dossier" },
@@ -70,6 +72,7 @@ export function availableUpdate(
   settings: Pick<SettingsData, "latestVersion" | "latestVersionUrl">,
   current = appVersion,
 ): Release | null {
+  if (!upstreamServicesEnabled()) return null;
   const { latestVersion: version, latestVersionUrl: url } = settings;
   return version && url && isReleasePage(url) && isNewer(version, current) ? { version, url } : null;
 }
@@ -85,7 +88,7 @@ export function updateNotice(
 
 /** Production servers check daily while the setting is on; development servers and tests never do. */
 export function dailyCheckRuns(): boolean {
-  return process.env.NODE_ENV === "production";
+  return upstreamServicesEnabled() && process.env.NODE_ENV === "production";
 }
 
 /** The calendar day in UTC: "2026-10-18". */
@@ -103,7 +106,7 @@ type DailyOptions = { now?: Date; runs?: boolean; fetchImpl?: typeof fetch };
 export async function checkIfNewDay({ now = new Date(), runs = dailyCheckRuns(), fetchImpl = fetch }: DailyOptions = {}): Promise<
   "checked" | "skipped"
 > {
-  if (!runs) return "skipped";
+  if (!upstreamServicesEnabled() || !runs) return "skipped";
   const day = utcDay(now);
   // Set before anything async, so pages loading together don't check twice.
   if (globalForCheck.updateCheckDay === day) return "skipped";

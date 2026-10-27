@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { env } from "@/lib/env";
+import { upstreamServicesEnabled } from "@/lib/fork-policy";
 import { logServerError } from "@/lib/log";
 import type { SettingsData } from "@/lib/settings";
 import { loadSettings, saveSettings } from "@/lib/settings-data";
@@ -46,6 +47,7 @@ export function usagePingChoice(
   settings: Pick<SettingsData, "usagePingChoice" | "usagePingChoiceText">,
   fromEnv: "on" | "off" | undefined = env.DOSSIER_TELEMETRY,
 ): UsagePingChoice {
+  if (!upstreamServicesEnabled()) return { choice: "off", source: "app" };
   if (fromEnv) return { choice: fromEnv, source: "env" };
   if (settings.usagePingChoice && settings.usagePingChoiceText === USAGE_PING_TEXT_VERSION) {
     return { choice: settings.usagePingChoice, source: "app" };
@@ -72,6 +74,7 @@ export function askForUsagePing(settings: Pick<SettingsData, "usagePingChoice" |
  * a later yes can't be linked.
  */
 export async function saveUsagePingChoice(choice: "on" | "off", now = new Date()): Promise<void> {
+  if (!upstreamServicesEnabled()) choice = "off";
   await saveSettings({
     usagePingChoice: choice,
     usagePingChoiceAt: now.toISOString(),
@@ -87,6 +90,7 @@ export async function saveUsagePingChoice(choice: "on" | "off", now = new Date()
  * differs, so the answer in effect is on record; off forgets the ID too.
  */
 export async function recordEnvChoice(fromEnv: "on" | "off" | undefined = env.DOSSIER_TELEMETRY, now = new Date()): Promise<void> {
+  if (!upstreamServicesEnabled()) fromEnv = "off";
   if (!fromEnv) return;
   const settings = await loadSettings();
   const recorded = settings.usagePingChoice === fromEnv && settings.usagePingChoiceText === USAGE_PING_TEXT_VERSION;
@@ -114,6 +118,7 @@ type PingOptions = { now?: Date; production?: boolean; fetchImpl?: typeof fetch 
  * tried again until the next day.
  */
 export async function pingIfNewDay({ now = new Date(), production = sendsFromHere(), fetchImpl = fetch }: PingOptions = {}): Promise<"sent" | "failed" | "skipped"> {
+  if (!upstreamServicesEnabled()) return "skipped";
   if (!production || env.DOSSIER_TELEMETRY === "off") return "skipped";
   const day = utcDay(now);
   // Set before anything async, so pages loading together don't send it twice.
@@ -131,6 +136,7 @@ export async function pingIfNewDay({ now = new Date(), production = sendsFromHer
 
 /** One request with the ID and the version; false if it doesn't arrive. Never throws. */
 export async function sendPing(id: string, fetchImpl: typeof fetch = fetch, url = env.DOSSIER_USAGE_PING_TEST_URL ?? USAGE_PING_URL): Promise<boolean> {
+  if (!upstreamServicesEnabled()) return false;
   try {
     const response = await fetchImpl(url, {
       method: "POST",

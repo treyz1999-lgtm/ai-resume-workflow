@@ -49,13 +49,12 @@ describe("the dashboard's settings", () => {
     expect((await loadSettings()).quietDays).toBe(14);
   });
 });
-
 describe("answering the usage ping question (#172)", () => {
-  it("records a yes with its time and question, and a no that forgets the install ID", async () => {
+  it("forces legacy opt-in requests off and forgets the install ID", async () => {
     await saveSettings({ usagePingId: "6f1c0e5a-9b1d-4c3e-8f2a-1d2e3f4a5b6c", usagePingDay: "2026-10-19" });
     expect(await chooseUsagePing({ send: true })).toEqual({ ok: true, data: null });
     const yes = await loadSettings();
-    expect(yes).toMatchObject({ usagePingChoice: "on", usagePingChoiceText: USAGE_PING_TEXT_VERSION, usagePingId: "6f1c0e5a-9b1d-4c3e-8f2a-1d2e3f4a5b6c" });
+    expect(yes).toMatchObject({ usagePingChoice: "off", usagePingChoiceText: USAGE_PING_TEXT_VERSION, usagePingId: null });
     expect(Date.parse(yes.usagePingChoiceAt!)).toBeGreaterThan(Date.now() - 60_000);
 
     expect(await chooseUsagePing({ send: false })).toEqual({ ok: true, data: null });
