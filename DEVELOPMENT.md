@@ -5,11 +5,8 @@ Next.js 16 (App Router) + Prisma 7 + PostgreSQL 18, run with Docker Compose and 
 ## Getting started
 
 ```bash
-cp .env.example .env
-docker compose build
-docker/bin/yarn hash-password   # set DOSSIER_PASSWORD in .env to what it prints
-# set DOSSIER_SECRET (openssl rand -base64 32) in .env
-docker compose up
+node scripts/setup-local.mjs   # Node 24.7+; see README for Docker-only setup
+docker compose up --build
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Source is bind-mounted, so edits hot-reload.
@@ -22,7 +19,7 @@ import { env } from "@/lib/env";
 ```
 
 On every start the `app` container runs `prisma generate`, `prisma migrate deploy`, then `next dev`.
-Postgres is also exposed on `localhost:5432` for host tools, using `DATABASE_URL` from `.env`.
+PostgreSQL is internal to the Compose network; no host database port is published. Use the optional local Prisma Studio service below or a command inside the database container.
 
 ## Yarn
 
