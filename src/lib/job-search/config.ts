@@ -8,7 +8,7 @@ import { loadSettings } from "@/lib/settings-data";
 import type { RequestContext, SourceCredentials } from "./adapter";
 import { JobSearchError, jobSearchError } from "./errors";
 import type { JobSource, JSearchHost } from "./search";
-import { ARBEITSAGENTUR_NOTE, SOURCE_INFO, type JobKeyState, type JobSearchSettingsView } from "./sources";
+import { SOURCE_INFO, type JobKeyState, type JobSearchSettingsView } from "./sources";
 
 // Which job source to search, and with which key (E14-4): what's saved in
 // Settings, or else the DOSSIER_JOBS_* variables. Each source keeps its own
@@ -56,11 +56,11 @@ function keyOf(stored: string | null, fromEnv: string | undefined, secret?: stri
 
 export function resolveJobSearchConfig(saved: SavedJobSettings, source: JobEnv, secret?: string): JobSearchConfig {
   const jsearchKey = keyOf(saved.jsearchKeyEnc, source.DOSSIER_JSEARCH_KEY, secret);
-  const offered = source.DOSSIER_JOBS_ARBEITSAGENTUR !== "off";
+  const offered = false;
   const chosen = saved.jobSource ? (saved.jobSource === "OFF" ? null : saved.jobSource) : source.DOSSIER_JOBS_SOURCE ? FROM_ENV[source.DOSSIER_JOBS_SOURCE] : null;
   return {
-    // A BA choice saved before the server turned it off counts as Off.
-    source: chosen === "ARBEITSAGENTUR" && !offered ? null : chosen,
+    // Retain legacy records, but removed providers cannot become active.
+    source: chosen === "JSEARCH" ? chosen : null,
     saved: saved.jobSource !== null,
     jsearch: {
       ...jsearchKey,
@@ -80,14 +80,10 @@ export async function loadJobSearchConfig(): Promise<JobSearchConfig> {
   return resolveJobSearchConfig(await loadSettings(), env);
 }
 
-/**
- * For the server log at start (#223): the Bundesagentur für Arbeit's note,
- * when DOSSIER_JOBS_SOURCE chooses it rather than Settings; null otherwise.
- */
+/** Legacy startup hook retained without advertising a removed provider. */
 export function arbeitsagenturStartupNotice(config: JobSearchConfig): string | null {
-  if (config.source !== "ARBEITSAGENTUR" || config.saved) return null;
-  const waiting = config.arbeitsagentur.acceptedAt ? "" : " It isn't searched until you tick “I understand” in Settings → Job search.";
-  return `Job search: DOSSIER_JOBS_SOURCE chooses the Bundesagentur für Arbeit. ${ARBEITSAGENTUR_NOTE}${waiting}`;
+  void config;
+  return null;
 }
 
 /** What Settings → Job search shows: the source and the keys' states, never the keys. */
@@ -110,29 +106,16 @@ export function requestContext(source: JobSource, base = env.DOSSIER_JOBS_TEST_B
 
 /**
  * The key a source needs, or a JobSearchError saying what's missing. Every
- * request to a source asks here first, so the BA's switch and note (#223)
- * hold for Find jobs, saved postings, the job agent and the Claude connector.
+ * request to a source asks here first, so removed sources remain disabled
+ * for Find jobs, saved postings, the job agent and legacy connectors.
  */
 export function credentialsFor<S extends JobSource>(config: JobSearchConfig, source: S): SourceCredentials[S] {
+  if (source !== "JSEARCH") throw jobSearchError("off", source);
   const missing = (keyState: JobKeyState) =>
     keyState === "unreadable"
       ? new JobSearchError("no-key", `Your saved ${SOURCE_INFO[source].name} key can't be read. Enter it again in Settings → Job search.`)
       : jobSearchError("no-key", source);
-  switch (source) {
-    case "JSEARCH": {
-      const { key, host, keyState } = config.jsearch;
-      if (!key) throw missing(keyState);
-      return { key, host } as SourceCredentials[S];
-    }
-    case "ADZUNA": {
-      const { appId, key, keyState } = config.adzuna;
-      if (!key || !appId) throw missing(keyState);
-      return { appId, key } as SourceCredentials[S];
-    }
-    case "ARBEITSAGENTUR": {
-      if (!config.arbeitsagentur.offered) throw jobSearchError("off", source);
-      if (!config.arbeitsagentur.acceptedAt) throw jobSearchError("not-accepted", source);
-      return {} as SourceCredentials[S];
-    }
-  }
+  const { key, host, keyState } = config.jsearch;
+  if (!key) throw missing(keyState);
+  return { key, host } as SourceCredentials[S];
 }

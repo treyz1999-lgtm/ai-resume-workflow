@@ -21,7 +21,6 @@ const off: JobSearchSettingsView = {
   adzuna: { appId: "", keyState: "none" },
   arbeitsagentur: { offered: true, acceptedAt: null },
 };
-const ACCEPTED = "2026-10-23T09:00:00.000Z";
 const withSource = (view: Partial<JobSearchSettingsView>): JobSearchSettingsView => ({ ...off, ...view });
 
 beforeEach(() => {
@@ -35,13 +34,11 @@ beforeEach(() => {
 });
 
 describe("JobSearchSection", () => {
-  it("offers the three sources and Off, as a radio group, Off by default", () => {
+  it("offers JSearch and Off, as a radio group, Off by default", () => {
     render(<JobSearchSection initial={off} />);
     expect(screen.getByRole("heading", { name: "Job search" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("aria-label"))).toEqual([
       "JSearch",
-      "Adzuna",
-      "Bundesagentur für Arbeit",
       "Off",
     ]);
     expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
@@ -81,52 +78,11 @@ describe("JobSearchSection", () => {
     expect(await screen.findByRole("link", { name: "JSearch on RapidAPI" })).toBeInTheDocument();
   });
 
-  it("asks Adzuna for an app ID and key, saving the ID when you leave it", async () => {
-    vi.mocked(saveJobSearchDetails).mockResolvedValue({ ok: true, data: withSource({ source: "ADZUNA", adzuna: { appId: "app-1", keyState: "none" } }) });
-    render(<JobSearchSection initial={withSource({ source: "ADZUNA" })} />);
-    await userEvent.type(screen.getByLabelText("App ID"), "app-1");
-    await userEvent.tab();
-    expect(saveJobSearchDetails).toHaveBeenCalledWith({ adzunaAppId: "app-1" });
-    expect(screen.getByLabelText("App key")).toHaveAttribute("type", "password");
-  });
-
-  it("saves the Arbeitsagentur only once its note is ticked (#223)", async () => {
-    vi.mocked(saveJobSource).mockResolvedValue({ ok: true, data: withSource({ source: "ARBEITSAGENTUR", arbeitsagentur: { offered: true, acceptedAt: ACCEPTED } }) });
-    render(<JobSearchSection initial={off} />);
-    await userEvent.click(screen.getByRole("radio", { name: "Bundesagentur für Arbeit" }));
-    expect(saveJobSource).not.toHaveBeenCalled();
-    expect(screen.getByText(/has no official API\. Dossier searches it through the access its own job search uses, without its permission/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /The BA's terms of use/ })).toHaveAttribute("href", "https://www.arbeitsagentur.de/datei/nutzungsbedingungen_ba036575.pdf");
+  it.each(["ADZUNA", "ARBEITSAGENTUR"] as const)("shows a legacy %s selection as Off", (source) => {
+    render(<JobSearchSection initial={withSource({ source })} />);
+    expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
     expect(screen.queryByRole("button", { name: "Test connection" })).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("checkbox", { name: "I understand, and choose this source myself" }));
-    expect(saveJobSource).toHaveBeenCalledWith({ source: "ARBEITSAGENTUR", accepted: true });
-    // Saved: the note stays, without the box, and it can be tested.
-    expect(await screen.findByRole("button", { name: "Test connection" })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(screen.getByText(/has no official API/)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/key/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/The job agent doesn't search this source/)).toBeInTheDocument();
-  });
-
-  it("asks people who chose the Arbeitsagentur before to tick the note too", async () => {
-    render(<JobSearchSection initial={withSource({ source: "ARBEITSAGENTUR" })} />);
-    expect(screen.getByRole("radio", { name: "Bundesagentur für Arbeit" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "I understand, and choose this source myself" })).not.toBeChecked();
-    expect(screen.queryByRole("button", { name: "Test connection" })).not.toBeInTheDocument();
-  });
-
-  it("doesn't save another source's choice as the Arbeitsagentur's", async () => {
-    render(<JobSearchSection initial={withSource({ source: "JSEARCH" })} />);
-    await userEvent.click(screen.getByRole("radio", { name: "Bundesagentur für Arbeit" }));
-    await userEvent.click(screen.getByRole("radio", { name: "Adzuna" }));
-    expect(saveJobSource).toHaveBeenCalledTimes(1);
-    expect(saveJobSource).toHaveBeenCalledWith({ source: "ADZUNA" });
-  });
-
-  it("leaves the Arbeitsagentur out when the server doesn't offer it", () => {
-    render(<JobSearchSection initial={withSource({ arbeitsagentur: { offered: false, acceptedAt: null } })} />);
-    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("aria-label"))).toEqual(["JSearch", "Adzuna", "Off"]);
+    expect(screen.queryByLabelText("App ID")).not.toBeInTheDocument();
   });
 
   it("shows keys from the environment and keys that can't be read", () => {

@@ -158,7 +158,7 @@ describe("job search settings (E14-4)", () => {
         source: "JSEARCH",
         jsearch: { host: "openwebninja", keyState: "none" },
         adzuna: { appId: "", keyState: "none" },
-        arbeitsagentur: { offered: true, acceptedAt: null },
+        arbeitsagentur: { offered: false, acceptedAt: null },
       },
     });
     await saveJobSource({ source: "OFF" });
@@ -166,20 +166,9 @@ describe("job search settings (E14-4)", () => {
     expect(await saveJobSource({ source: "LINKEDIN" as never })).toMatchObject({ ok: false });
   });
 
-  it("saves the Bundesagentur für Arbeit only with its note accepted (#223)", async () => {
-    expect(await saveJobSource({ source: "ARBEITSAGENTUR" })).toEqual({
-      ok: false,
-      error: "Tick “I understand” under the note about the Bundesagentur für Arbeit first.",
-    });
+  it.each(["ADZUNA", "ARBEITSAGENTUR"] as const)("refuses the removed %s source", async (source) => {
+    expect(await saveJobSource({ source, accepted: true })).toMatchObject({ ok: false });
     expect((await settings()).jobSource).toBeNull();
-    const saved = await saveJobSource({ source: "ARBEITSAGENTUR", accepted: true });
-    expect(saved).toMatchObject({ ok: true, data: { source: "ARBEITSAGENTUR", arbeitsagentur: { offered: true, acceptedAt: expect.any(String) } } });
-    const { jobSource, arbeitsagenturAcceptedAt } = await settings();
-    expect(jobSource).toBe("ARBEITSAGENTUR");
-    expect(Date.parse(arbeitsagenturAcceptedAt!)).toBeGreaterThan(Date.now() - 60_000);
-    // Once accepted, switching back needs no second tick.
-    await saveJobSource({ source: "JSEARCH" });
-    expect(await saveJobSource({ source: "ARBEITSAGENTUR" })).toMatchObject({ ok: true });
   });
 
   it("stores each source's key encrypted, keeps it when switching, and only says it's set", async () => {
