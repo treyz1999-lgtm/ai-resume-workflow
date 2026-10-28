@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 ready for review; M1–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 in progress; M2–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 

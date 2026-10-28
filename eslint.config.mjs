@@ -19,6 +19,11 @@ const eslintConfig = defineConfig([
     // End-to-end test output.
     "playwright-report/**",
     "test-results/**",
+    // Local application data and diagnostic artifacts are not source code.
+    "runtime/**",
+    "private/**",
+    "data/**",
+    "backups/**",
   ]),
 ]);
 

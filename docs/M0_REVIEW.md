@@ -56,3 +56,9 @@ Review the changes with `git diff 3271c8b2900082e0caa1ed42765b71d28134c0c1` and 
 - No GitHub fork has been created and nothing has been pushed.
 
 Implementation is paused for the user's M0 review. Approval authorizes creating `ai-resume-workflow` under the authenticated GitHub account, configuring `origin`, pushing this baseline, and starting M1. It does not authorize deployments or application submissions.
+
+## Approval addendum — October 28, 2026
+
+User approved M0, fork creation, push, and continuation to M1. Requested removal of Adzuna and Bundesagentur options; JSearch and Off remain. The fork is https://github.com/treyz1999-lgtm/ai-resume-workflow. The initial fork main copied a newer upstream revision; the approved pinned baseline will replace that untouched fork branch with an explicit lease. No user-authored remote commits are overwritten.
+
+Post-approval removal validation: lint and type checks passed; 1,644 tests passed with 26 opt-in live tests skipped and unchanged coverage thresholds passing. Live browser source selector asserted exactly JSearch and Off; see [updated settings](screenshots/m0-job-search.png).
