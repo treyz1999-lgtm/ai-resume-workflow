@@ -19,6 +19,27 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Internal M1 diagnostic runs, separate from application attempts and upstream jobs.
+model ExecutionRun {
+  id         String   @id
+  status     String   @default("QUEUED")
+  model      String?
+  prompt     String
+  threadId   String?
+  turnId     String?
+  stage      String?
+  output     String   @default("")
+  result     Json?
+  error      String?
+  owner      String?
+  cancelRequested Boolean @default(false)
+  leaseUntil DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
 // ─── Profile (E2-1) ──────────────────────────────────────────────────────────
 
 /// The profile's basics (name, headline, contact details, summary…), one row
