@@ -93,3 +93,25 @@ RUN sed -i 's/\r$//' ./start.sh
 USER node
 # Migrations, the seed, then the server (E12-3).
 CMD ["./start.sh"]
+
+# Internal execution worker. Authentication and task artifacts live only in
+# separate volumes, never in this image or the app's ordinary backup directory.
+FROM dev AS worker
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+    texlive-fonts-recommended lmodern poppler-utils ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install --global @openai/codex@0.165.0 \
+  && mkdir -p /auth/codex /work/artifacts \
+  && chown -R node:node /auth /work
+ENV CODEX_HOME=/auth/codex \
+    EXECUTION_ROOT=/work \
+    WORKER_PORT=4310
+COPY --chown=node:node . .
+COPY --chown=node:node --chmod=755 docker/worker-start.sh /usr/local/bin/worker-start
+RUN sed -i 's/\r$//' /usr/local/bin/worker-start
+USER node
+RUN yarn prisma generate
+# No EXPOSE/host port: the application is the only supported HTTP entry point.
+CMD ["/usr/local/bin/worker-start"]

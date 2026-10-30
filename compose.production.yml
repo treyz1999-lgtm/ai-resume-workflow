@@ -43,6 +43,7 @@ services:
       DOSSIER_AI_TIMEOUT_SECONDS: ${DOSSIER_AI_TIMEOUT_SECONDS:-}
       DOSSIER_TELEMETRY: "off"
       NEXT_TELEMETRY_DISABLED: "1"
+      WORKER_URL: http://worker:4310
       # Defaults for Settings → Job search.
       DOSSIER_JOBS_SOURCE: ${DOSSIER_JOBS_SOURCE:-}
       DOSSIER_JSEARCH_KEY: ${DOSSIER_JSEARCH_KEY:-}
@@ -64,6 +65,30 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  worker:
+    build:
+      context: .
+      target: worker
+    init: true
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dossier}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dossier}
+      DOSSIER_SECRET: ${DOSSIER_SECRET:?Set DOSSIER_SECRET in .env}
+      CODEX_HOME: /auth/codex
+      EXECUTION_ROOT: /work
+      WORKER_PORT: "4310"
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - codex_auth:/auth/codex
+      - execution_data:/work
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   # A local model, with COMPOSE_PROFILES=ai in .env: `docker compose up -d`,
   # then pull one (see "Choosing an AI provider" in the wiki). Dossier reaches it at http://ollama:11434.
   ollama:
@@ -74,6 +99,8 @@ services:
       - ollama:/root/.ollama
 
 volumes:
+  codex_auth:
+  execution_data:
   appdata:
   pgdata:
   ollama:
