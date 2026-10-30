@@ -8,6 +8,7 @@ export { ExecutionError } from "./rpc";
 const diagnostic = z.object({ status: z.literal("ok"), message: z.string().min(1).max(4000) }).strict();
 type Account = { account: { type: string; planType?: string | null } | null };
 type Turn = { id: string; status: string; error?: unknown; items?: { type: string; text?: string }[] };
+const turnSchema = z.object({ id: z.string().min(1), status: z.string(), error: z.unknown().optional(), items: z.array(z.object({ type: z.string(), text: z.string().optional() })).optional() });
 type Window = { usedPercent: number; windowDurationMins: number; resetsAt?: number | null };
 type Limit = { limitName?: string | null; primary?: Window | null; secondary?: Window | null };
 
@@ -110,7 +111,10 @@ export class CodexAdapter implements ExecutionAdapter {
         if (turnId) void client.request("turn/interrupt", { threadId, turnId }).catch(() => client.close());
       };
       const cancel = () => { aborted = true; interrupt(); finish(new ExecutionError("cancelled")); client.close(); };
-      const complete = (turn: Turn) => {
+      const complete = (value: unknown) => {
+        const parsed = turnSchema.safeParse(value);
+        if (!parsed.success) { interrupt(); finish(new ExecutionError("invalid-result")); client.close(); return; }
+        const turn = parsed.data;
         if (!turnId || !checkpointed) { early.push(turn); return; }
         if (turn.id !== turnId) return;
         if (turn.status === "interrupted") return finish(new ExecutionError("cancelled"));
@@ -136,7 +140,7 @@ export class CodexAdapter implements ExecutionAdapter {
             if (item.text.length > 64_000) { interrupt(); finish(new ExecutionError("invalid-result")); client.close(); return; }
             finalMessage = item.text;
           }
-        } else if (event.method === "turn/completed") complete(data.turn as Turn);
+        } else if (event.method === "turn/completed") complete(data.turn);
       });
       const disconnect = client.onDisconnect(() => finish(new ExecutionError("transport")));
       const timer = setTimeout(() => { interrupt(); finish(new ExecutionError("transport")); client.close(); }, this.turnTimeoutMs);

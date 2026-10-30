@@ -116,6 +116,21 @@ describe("subscription adapter", () => {
     const error = await adapter.execute(task, new AbortController().signal, () => {}).catch(error => error);
     expect(error).toMatchObject({ code }); expect(error.message).not.toContain("secret");
   });
+  it("does not start inference when the durable thread checkpoint fails", async () => {
+    const { adapter, rpc } = await fixture();
+    await expect(adapter.execute(task, new AbortController().signal, async event => {
+      if (event.type === "checkpoint") throw new Error("storage unavailable");
+    })).rejects.toMatchObject({ code: "transport" });
+    expect(rpc.calls.some(call => call.method === "turn/start")).toBe(false);
+  });
+  it.each([undefined, { id: "turn-1", status: "completed", items: {} }])("rejects malformed completed turns safely", async turn => {
+    const { adapter, rpc } = await fixture();
+    rpc.turn = async client => {
+      queueMicrotask(() => client.event("turn/completed", { threadId: "thread-1", turn }));
+      return { turn: { id: "turn-1", status: "inProgress" } };
+    };
+    await expect(adapter.execute(task, new AbortController().signal, () => {})).rejects.toMatchObject({ code: "invalid-result" });
+  });
   it("interrupts cancellation and terminates the transport before another run can begin", async () => {
     const { adapter, rpc } = await fixture();
     rpc.turn = async () => ({ turn: { id: "turn-1", status: "inProgress" } });
