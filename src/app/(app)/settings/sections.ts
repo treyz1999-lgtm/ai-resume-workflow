@@ -1,5 +1,6 @@
 /** The settings sections, in order (PRD §6.8). */
 export const SETTINGS_SECTIONS = [
+  { id: "connections", label: "Connections" },
   { id: "ai", label: "AI provider" },
   { id: "jobs", label: "Job search" },
   { id: "agent", label: "Job agent" },

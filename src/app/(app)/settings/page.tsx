@@ -23,6 +23,7 @@ import { availableUpdate } from "@/lib/update-check";
 import { USAGE_PING_HOST, usagePingChoice } from "@/lib/usage-ping";
 
 import { AgentSection } from "./agent-section";
+import { ConnectionsSection } from "./connections-section";
 import { AiBehaviour } from "./ai-behaviour";
 import { AiProviderSection } from "./ai-provider-section";
 import { DataSection } from "./data-section";
@@ -45,7 +46,9 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 
   return (
     <SettingsScreen section={section}>
-      {section === "ai" ? (
+      {section === "connections" ? (
+        <ConnectionsSection />
+      ) : section === "ai" ? (
         <>
           <AiProviderSection initial={await loadAiSettingsView()} />
           <AiBehaviour initial={{ creativity: settings.creativity, strict: settings.strict, showDiff: settings.showDiff }} />
