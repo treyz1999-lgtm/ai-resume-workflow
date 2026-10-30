@@ -96,6 +96,7 @@ export class CodexAdapter implements ExecutionAdapter {
     return new Promise<ExecutionResult>((resolve, reject) => {
       let settled = false;
       let turnId: string | undefined;
+      let checkpointed = false;
       let output = "";
       let finalMessage = "";
       let aborted = false;
@@ -110,7 +111,7 @@ export class CodexAdapter implements ExecutionAdapter {
       };
       const cancel = () => { aborted = true; interrupt(); finish(new ExecutionError("cancelled")); client.close(); };
       const complete = (turn: Turn) => {
-        if (!turnId) { early.push(turn); return; }
+        if (!turnId || !checkpointed) { early.push(turn); return; }
         if (turn.id !== turnId) return;
         if (turn.status === "interrupted") return finish(new ExecutionError("cancelled"));
         if (turn.status !== "completed") return finish(executionError(turn.error));
@@ -147,6 +148,7 @@ export class CodexAdapter implements ExecutionAdapter {
       }).then(async result => {
         turnId = result.turn.id;
         await progress({ type: "checkpoint", threadId, turnId });
+        checkpointed = true;
         if (aborted) { interrupt(); return; }
         for (const turn of early) complete(turn);
         if (result.turn.status !== "inProgress") complete(result.turn);

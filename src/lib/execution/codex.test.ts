@@ -97,6 +97,19 @@ describe("subscription adapter", () => {
     };
     expect((await adapter.execute(task, new AbortController().signal, () => {})).structured).toMatchObject({ status: "ok" });
   });
+  it("waits for durable thread checkpoint before beginning inference", async () => {
+    const { adapter, rpc } = await fixture();
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const progress = vi.fn(async (event: ExecutionProgress) => {
+      if (event.type === "checkpoint" && !event.turnId) await gate;
+    });
+    const run = adapter.execute(task, new AbortController().signal, progress);
+    await vi.waitFor(() => expect(progress).toHaveBeenCalledWith({ type: "checkpoint", threadId: "thread-1" }));
+    expect(rpc.calls.some(call => call.method === "turn/start")).toBe(false);
+    release(); await run;
+    expect(rpc.calls.some(call => call.method === "turn/start")).toBe(true);
+  });
   it.each([["quota exceeded", "quota"], ["401 expired token", "auth"], ["unknown provider detail with secret", "transport"]])("classifies %s without exposing provider details", async (message, code) => {
     const { adapter, rpc } = await fixture();
     rpc.turn = async client => { queueMicrotask(() => client.complete("failed", { message })); return { turn: { id: "turn-1", status: "inProgress" } }; };
