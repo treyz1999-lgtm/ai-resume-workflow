@@ -74,6 +74,8 @@ it("rebuilds artifact links and serves fixed file types without forwarding worke
   const pdf = await invoke(`artifacts/${id}/sample.pdf`);
   expect(await pdf.text()).toBe("%PDF-fixture");
   expect(pdf.headers.get("content-type")).toBe("application/pdf");
+  expect(pdf.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+  expect(pdf.headers.get("content-security-policy")).toContain("frame-ancestors 'self'");
   expect(pdf.headers.get("set-cookie")).toBeNull();
   fetchMock.mockResolvedValueOnce(new Response("latex"));
   expect((await invoke(`artifacts/${id}/sample.tex`)).headers.get("content-disposition")).toContain("attachment");
