@@ -21,6 +21,13 @@ describe("application-owned transport", () => {
     const adapter = new HttpExecutionAdapter("openai-compatible", { endpoint: "http://fixture", model: "fixture", fetchImpl: async () => new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: valid } }] })) });
     await expect(adapter.execute(context, new AbortController().signal, () => {})).rejects.toMatchObject({ code: "invalid-result" });
   });
+  it("bounds streaming response bytes even when Content-Length is absent", async () => {
+    const cancelled = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({ pull(controller) { controller.enqueue(new Uint8Array(70_000)); }, cancel: cancelled });
+    const adapter = new HttpExecutionAdapter("ollama", { endpoint: "http://fixture", model: "fixture", fetchImpl: async () => new Response(stream) });
+    await expect(adapter.execute(context, new AbortController().signal, () => {})).rejects.toMatchObject({ code: "invalid-result" });
+    expect(cancelled).toHaveBeenCalledOnce();
+  });
   it("passes cancellation to transport and returns a safe cancellation result", async () => {
     const controller = new AbortController();
     const adapter = new HttpExecutionAdapter("ollama", { endpoint: "http://fixture", model: "fixture", fetchImpl: async (_url, options) => {

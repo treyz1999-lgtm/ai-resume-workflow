@@ -74,7 +74,7 @@ describe("subscription adapter", () => {
     expect(progress).toContainEqual({ type: "checkpoint", threadId: "thread-1" });
     expect(progress).toContainEqual({ type: "checkpoint", threadId: "thread-1", turnId: "turn-1" });
     expect(progress.some(event => event.type === "delta")).toBe(true);
-    expect(rpc.calls.find(call => call.method === "turn/start")?.params).toMatchObject({ approvalPolicy: "never", sandboxPolicy: { type: "readOnly", access: { type: "restricted" } } });
+    expect(rpc.calls.find(call => call.method === "turn/start")?.params).toMatchObject({ approvalPolicy: "never", sandboxPolicy: { type: "readOnly", networkAccess: false } });
     expect(rpc.listeners.size).toBe(0);
   });
   it("resumes the stored thread and validates completed output", async () => {

@@ -81,11 +81,11 @@ export class CodexAdapter implements ExecutionAdapter {
       progress({ type: "stage", message: "Starting subscription-authenticated Codex task" });
       const cwd = join(this.root, "diagnostic");
       const params = { ...(context.model ? { model: context.model } : {}), cwd, approvalPolicy: "never", sandbox: "read-only",
-        config: { "features.shell_tool": false, "web_search": "disabled" } };
+        config: { "features.shell_tool": false, "features.unified_exec": false, "features.multi_agent": false, "web_search": "disabled" } };
       const response = await client.request<{ thread: { id: string } }>(context.threadId ? "thread/resume" : "thread/start",
         { ...params, ...(context.threadId ? { threadId: context.threadId } : {}) });
       const threadId = response.thread.id;
-      progress({ type: "checkpoint", threadId });
+      await progress({ type: "checkpoint", threadId });
       if (signal.aborted) throw new ExecutionError("cancelled");
       return await this.runTurn(client, threadId, context, signal, progress);
     } catch (error) { throw executionError(error); }
@@ -143,14 +143,14 @@ export class CodexAdapter implements ExecutionAdapter {
       this.abortActive = cancel;
       if (signal.aborted) { cancel(); return; }
       void client.request<{ turn: Turn }>("turn/start", { threadId, input: [{ type: "text", text: context.prompt }],
-        approvalPolicy: "never", sandboxPolicy: { type: "readOnly", access: { type: "restricted", includePlatformDefaults: true, readableRoots: [join(this.root, "diagnostic")] } }, outputSchema: context.outputSchema ?? DIAGNOSTIC_SCHEMA,
-      }).then(result => {
+        approvalPolicy: "never", sandboxPolicy: { type: "readOnly", networkAccess: false }, outputSchema: context.outputSchema ?? DIAGNOSTIC_SCHEMA,
+      }).then(async result => {
         turnId = result.turn.id;
-        progress({ type: "checkpoint", threadId, turnId });
+        await progress({ type: "checkpoint", threadId, turnId });
         if (aborted) { interrupt(); return; }
         for (const turn of early) complete(turn);
         if (result.turn.status !== "inProgress") complete(result.turn);
-      }).catch(error => finish(executionError(error)));
+      }).catch(error => { interrupt(); finish(executionError(error)); client.close(); });
     });
   }
 }

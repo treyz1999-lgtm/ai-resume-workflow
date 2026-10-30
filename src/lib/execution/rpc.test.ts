@@ -39,6 +39,6 @@ describe("bounded stdio RPC", () => {
   });
   it("does not forward worker secrets or API billing credentials to Codex", () => {
     const env = codexEnvironment({ PATH: "/bin", HOME: "/private-user", OPENAI_API_KEY: "secret", DATABASE_URL: "secret", DOSSIER_SECRET: "secret", CODEX_HOME: "/auth/codex" });
-    expect(env).toEqual({ PATH: "/bin", HOME: "/auth/codex", CODEX_HOME: "/auth/codex" });
+    expect(env).toEqual({ NODE_ENV: "production", PATH: "/bin", HOME: "/auth/codex", CODEX_HOME: "/auth/codex" });
   });
 });

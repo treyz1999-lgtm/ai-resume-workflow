@@ -5,6 +5,25 @@ import { ExecutionError, executionError } from "./rpc";
 
 type TransportOptions = { endpoint: string; model: string; apiKey?: string; fetchImpl?: typeof fetch; timeoutMs?: number };
 const resultSchema = z.object({ status: z.literal("ok"), message: z.string().min(1).max(4000) }).strict();
+async function boundedBody(response: Response): Promise<string> {
+  if (Number(response.headers.get("content-length")) > 128_000) {
+    await response.body?.cancel();
+    throw new ExecutionError("invalid-result");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new ExecutionError("invalid-result");
+  const decoder = new TextDecoder();
+  let bytes = 0; let text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return text + decoder.decode();
+      bytes += value.byteLength;
+      if (bytes > 128_000) { await reader.cancel(); throw new ExecutionError("invalid-result"); }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally { reader.releaseLock(); }
+}
 /** Application-owned transport: no Codex credentials, file tools, or implicit provider fallback. */
 export class HttpExecutionAdapter implements ExecutionAdapter {
   readonly capabilities = { structured: true, streaming: false, cancellation: true, resume: false };
@@ -24,8 +43,7 @@ export class HttpExecutionAdapter implements ExecutionAdapter {
           ...(this.kind === "ollama" ? { format: schema } : { response_format: { type: "json_schema", json_schema: { name: "connection_result", strict: true, schema } } }) }),
       });
       if (!response.ok) throw executionError({ status: response.status });
-      const raw = await response.text();
-      if (raw.length > 128_000) throw new ExecutionError("invalid-result");
+      const raw = await boundedBody(response);
       const body = JSON.parse(raw);
       const text = this.kind === "ollama" ? body.message?.content : body.choices?.[0]?.message?.content;
       if (typeof text !== "string" || (this.kind === "ollama" ? body.done !== true : body.choices?.[0]?.finish_reason !== "stop")) throw new ExecutionError("invalid-result");

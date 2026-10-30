@@ -106,8 +106,8 @@ export class StdioRpc implements RpcClient {
 }
 
 /** Do not forward the worker's database secret or any API/provider credentials. */
-export function codexEnvironment(source: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
-  const result: NodeJS.ProcessEnv = {};
+export function codexEnvironment(source: Partial<NodeJS.ProcessEnv> = process.env): NodeJS.ProcessEnv {
+  const result: NodeJS.ProcessEnv = { NODE_ENV: "production" };
   for (const name of ["PATH", "LANG", "LC_ALL", "TZ", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS"]) {
     if (source[name]) result[name] = source[name];
   }
@@ -119,6 +119,7 @@ export function startCodex(cwd: string): RpcClient {
   return new StdioRpc(spawn("codex", ["app-server", "--listen", "stdio://",
     "-c", 'forced_login_method="chatgpt"', "-c", 'cli_auth_credentials_store="file"',
     "-c", 'model_provider="openai"', "-c", 'sandbox_mode="read-only"',
-    "-c", 'approval_policy="never"', "-c", "features.shell_tool=false", "-c", 'web_search="disabled"',
+    "-c", 'approval_policy="never"', "-c", "features.shell_tool=false", "-c", "features.unified_exec=false",
+    "-c", "features.multi_agent=false", "-c", 'web_search="disabled"',
   ], { cwd, env: codexEnvironment(), stdio: "pipe", windowsHide: true }));
 }
