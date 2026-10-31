@@ -40,7 +40,7 @@ function operation(method: string, path: string[]) {
     if (method === "GET" && path.length === 2) return { key, result: run };
     if (method === "POST" && path.length === 3 && ["cancel", "resume"].includes(path[2])) return { key, body: empty, result: run };
   }
-  if (method === "GET" && path.length === 3 && path[0] === "artifacts" && z.string().uuid().safeParse(path[1]).success && ["sample.pdf", "sample.tex"].includes(path[2])) {
+  if (method === "GET" && path.length === 3 && path[0] === "artifacts" && z.string().uuid().safeParse(path[1]).success && ["sample.pdf", "sample.tex", "sample.png"].includes(path[2])) {
     return { key, file: path[2] };
   }
   return null;
@@ -88,8 +88,8 @@ const proxy = async (request: NextRequest, { params }: { params: Promise<{ path:
     }
     if (selected.file) {
       return new Response(response.body, { headers: {
-        "Content-Type": selected.file.endsWith(".pdf") ? "application/pdf" : "text/plain; charset=utf-8",
-        "Content-Disposition": `${selected.file.endsWith(".pdf") ? "inline" : "attachment"}; filename="${selected.file}"`,
+        "Content-Type": selected.file.endsWith(".pdf") ? "application/pdf" : selected.file.endsWith(".png") ? "image/png" : "text/plain; charset=utf-8",
+        "Content-Disposition": `${selected.file.endsWith(".tex") ? "attachment" : "inline"}; filename="${selected.file}"`,
         "X-Content-Type-Options": "nosniff",
         // Only fixed generated files may be framed, by this app itself.
         "X-Frame-Options": "SAMEORIGIN",

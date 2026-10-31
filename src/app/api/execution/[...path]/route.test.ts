@@ -79,6 +79,12 @@ it("rebuilds artifact links and serves fixed file types without forwarding worke
   expect(pdf.headers.get("set-cookie")).toBeNull();
   fetchMock.mockResolvedValueOnce(new Response("latex"));
   expect((await invoke(`artifacts/${id}/sample.tex`)).headers.get("content-disposition")).toContain("attachment");
+  fetchMock.mockResolvedValueOnce(new Response(new Uint8Array([137, 80, 78, 71])));
+  const png = await invoke(`artifacts/${id}/sample.png`);
+  expect(png.headers.get("content-type")).toBe("image/png");
+  expect(png.headers.get("content-disposition")).toBe('inline; filename="sample.png"');
+  expect(new Uint8Array(await png.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
+  expect((await invoke(`artifacts/${id}/other.png`)).status).toBe(404);
   expect((await invoke(`artifacts/${id}/auth.json`)).status).toBe(404);
 });
 it("returns safe errors when worker requests fail or malformed data arrives", async () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,7 @@ export function ConnectionsSection() {
         {artifact && <>
           <p role="status">Verified {artifact.pages} page{artifact.pages === 1 ? "" : "s"}; readable PDF text found.</p>
           <div className="flex gap-4"><a href={artifact.pdfUrl} download="sample.pdf" className="underline">Download PDF</a><a href={artifact.sourceUrl} download="sample.tex" className="underline">Download LaTeX source</a></div>
-          <iframe title="Compiled sample PDF" src={artifact.pdfUrl} className="h-[650px] w-full rounded-card border border-line" />
+          <Image alt="Rendered preview of the compiled sample PDF" src={artifact.pdfUrl.replace(/sample\.pdf$/, "sample.png")} width={850} height={1100} unoptimized className="h-auto w-full rounded-card border border-line" />
           <details><summary className="cursor-pointer">Extracted PDF text</summary><pre className="whitespace-pre-wrap text-sm">{artifact.text}</pre></details>
         </>}
       </Card>

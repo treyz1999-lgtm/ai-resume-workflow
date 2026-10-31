@@ -64,11 +64,12 @@ it("keeps blocked jobs visible with their reason and allows explicit resume afte
   expect(screen.getByRole("button", { name: "Resume test" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "Run connection test" })).toBeDisabled();
 });
-it("compiles a sample and provides actual PDF preview and source downloads without signing in", async () => {
+it("compiles a sample and provides a rendered image preview with PDF and source downloads without signing in", async () => {
   render(<ConnectionsSection />);
   await userEvent.click(screen.getByRole("button", { name: "Compile sample PDF" }));
   expect(await screen.findByText("Verified 1 page; readable PDF text found.")).toBeInTheDocument();
-  expect(screen.getByTitle("Compiled sample PDF")).toHaveAttribute("src", "/api/execution/artifacts/sample-1/sample.pdf");
+  expect(screen.getByRole("img", { name: "Rendered preview of the compiled sample PDF" })).toHaveAttribute("src", "/api/execution/artifacts/sample-1/sample.png");
+  expect(screen.getByRole("link", { name: "Download PDF" })).toHaveAttribute("href", "/api/execution/artifacts/sample-1/sample.pdf");
   expect(screen.getByRole("link", { name: "Download PDF" })).toHaveAttribute("download", "sample.pdf");
   expect(screen.getByRole("link", { name: "Download LaTeX source" })).toHaveAttribute("href", "/api/execution/artifacts/sample-1/sample.tex");
 });
