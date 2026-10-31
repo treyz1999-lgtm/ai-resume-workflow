@@ -57,7 +57,8 @@ export class ExecutionStore {
   async finish(id: string, owner: string, status: ExecutionStatus, result?: ExecutionResult, error?: string): Promise<void> {
     await this.pool.query(`UPDATE "ExecutionRun" SET status=CASE WHEN "cancelRequested" THEN 'CANCELLED' ELSE $3 END,
       result=CASE WHEN "cancelRequested" THEN NULL ELSE $4::jsonb END,
-      output=COALESCE($5,output), error=$6, stage=$3, owner=NULL, "leaseUntil"=NULL, "updatedAt"=NOW()
+      output=CASE WHEN "cancelRequested" THEN output ELSE COALESCE($5,output) END,
+      error=$6, stage=CASE WHEN "cancelRequested" THEN 'CANCELLED' ELSE $3 END, owner=NULL, "leaseUntil"=NULL, "updatedAt"=NOW()
       WHERE id=$1 AND owner=$2 AND status='RUNNING' AND "leaseUntil">NOW()`,
     [id, owner, status, result ? JSON.stringify(result.structured ?? null) : null, result?.text ?? null, error ?? null]);
   }
@@ -67,6 +68,10 @@ export class ExecutionStore {
       stage=CASE WHEN status='RUNNING' THEN 'Cancelling...' ELSE 'Cancelled' END,
       "cancelRequested"=true, "updatedAt"=NOW()
       WHERE id=$1 AND status IN ('QUEUED','RUNNING','BLOCKED','INTERRUPTED')`, [id]);
+  }
+  async cancelAll(): Promise<void> {
+    await this.pool.query(`UPDATE "ExecutionRun" SET status=CASE WHEN status='RUNNING' THEN 'RUNNING' ELSE 'CANCELLED' END,
+      "cancelRequested"=true, stage='Signing out', "updatedAt"=NOW() WHERE status IN ('RUNNING','QUEUED')`);
   }
   async resume(id: string): Promise<boolean> {
     return (await this.pool.query(`UPDATE "ExecutionRun" SET status='QUEUED', error=NULL, "cancelRequested"=false, stage='Waiting to resume',

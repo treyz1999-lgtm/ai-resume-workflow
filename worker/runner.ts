@@ -14,6 +14,10 @@ export class ExecutionRunner {
     if (this.stopped || this.active) return false;
     const run = await this.store.claim(this.owner);
     if (!run) return false;
+    if (this.stopped) {
+      await this.store.finish(run.id, this.owner, "INTERRUPTED", undefined, "Worker stopped. Resume when ready.");
+      return false;
+    }
     const controller = new AbortController();
     this.active = { id: run.id, controller };
     let writes = Promise.resolve();
@@ -23,7 +27,7 @@ export class ExecutionRunner {
     try {
       const result = await this.adapter.execute({ id: run.id, prompt: run.prompt, model: run.model ?? undefined,
         threadId: run.threadId ?? undefined, outputSchema: DIAGNOSTIC_SCHEMA }, controller.signal,
-      event => { writes = writes.then(() => this.store.progress(run.id, this.owner, event)); void writes.catch(() => controller.abort()); });
+      event => { writes = writes.then(() => this.store.progress(run.id, this.owner, event)); void writes.catch(() => controller.abort()); return writes; });
       await writes;
       await this.store.finish(run.id, this.owner, "COMPLETED", result);
     } catch (error) {

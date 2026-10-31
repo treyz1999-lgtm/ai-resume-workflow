@@ -47,6 +47,7 @@ const SCREENS = [
   // The dashboard's calendar on another month.
   "/?date=2026-11-01",
   "/settings?section=ai",
+  "/settings?section=connections",
   "/settings?section=jobs",
   "/settings?section=agent",
   "/settings?section=documents",

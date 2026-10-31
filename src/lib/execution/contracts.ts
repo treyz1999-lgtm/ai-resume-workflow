@@ -6,7 +6,7 @@ export type ExecutionResult = { text: string; structured?: unknown; threadId?: s
 export type ExecutionCapabilities = { structured: boolean; streaming: boolean; cancellation: boolean; resume: boolean };
 export interface ExecutionAdapter {
   readonly capabilities: ExecutionCapabilities;
-  execute(context: TaskContext, signal: AbortSignal, progress: (event: ExecutionProgress) => void): Promise<ExecutionResult>;
+  execute(context: TaskContext, signal: AbortSignal, progress: (event: ExecutionProgress) => void | Promise<void>): Promise<ExecutionResult>;
 }
 export type ConnectionView = {
   connected: boolean; authType: string | null; plan: string | null;

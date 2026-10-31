@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { NextRequest } from "next/server";
 
 import { env } from "@/lib/env";
 import { route } from "@/lib/route";
@@ -46,7 +47,7 @@ function operation(method: string, path: string[]) {
 }
 
 /** Only the product's fixed operations reach the private worker; never raw RPC. */
-const proxy = route<{ params: Promise<{ path: string[] }> }>(async (request, { params }) => {
+const proxy = async (request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) => {
   const selected = operation(request.method, (await params).path);
   if (!selected || request.nextUrl.search) return Response.json({ error: "Unknown execution operation." }, { status: 404 });
   let body: string | undefined;
@@ -104,7 +105,7 @@ const proxy = route<{ params: Promise<{ path: string[] }> }>(async (request, { p
   } catch {
     return Response.json({ error: "The local worker is unavailable or returned an incomplete response. Start the worker and try again." }, { status: 503 });
   }
-});
+};
 
-export const GET = proxy;
-export const POST = proxy;
+export const GET = route<{ params: Promise<{ path: string[] }> }>(proxy);
+export const POST = route<{ params: Promise<{ path: string[] }> }>(proxy);

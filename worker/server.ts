@@ -59,11 +59,11 @@ const server = createServer(async (request, response) => {
         return json(response, view((await store.get(id))!));
       }
     }
-    const artifact = path.match(new RegExp(`^/artifacts/(${uuid})/(sample\\.pdf|sample\\.tex)$`));
+    const artifact = path.match(new RegExp(`^/artifacts/(${uuid})/(sample\\.pdf|sample\\.tex|sample\\.png)$`));
     if (method === "GET" && artifact) {
       const file = artifactPath(root, artifact[1], artifact[2]);
       const content = await readFile(file);
-      response.writeHead(200, { "Content-Type": artifact[2].endsWith("pdf") ? "application/pdf" : "text/plain; charset=utf-8",
+      response.writeHead(200, { "Content-Type": artifact[2].endsWith("pdf") ? "application/pdf" : artifact[2].endsWith("png") ? "image/png" : "text/plain; charset=utf-8",
         "Content-Disposition": `inline; filename="${artifact[2]}"`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
       return response.end(content);
     }
@@ -80,7 +80,7 @@ const server = createServer(async (request, response) => {
       empty.parse(input);
       if (path === "/login") return json(response, await adapter.login());
       if (path === "/logout") {
-        for (const run of await store.list()) if (["QUEUED", "RUNNING"].includes(run.status)) { await store.cancel(run.id); runner.cancel(run.id); }
+        await store.cancelAll();
         await adapter.logout(); return json(response, { ok: true });
       }
       if (path === "/latex/sample") {
