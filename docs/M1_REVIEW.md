@@ -1,6 +1,6 @@
 # M1 review record — in progress
 
-Updated October 31, 2026. M0 is approved and published; M1 remains local on `milestone/m1`. Do not push M1 or begin M2 until the milestone is demonstrated and the user approves.
+Updated November 2, 2026. M0 is approved and published; M1 remains local on `milestone/m1`. Do not push M1 or begin M2 until the milestone is demonstrated and the user approves.
 
 ## Implemented
 
@@ -13,14 +13,15 @@ Updated October 31, 2026. M0 is approved and published; M1 remains local on `mil
 ## Verification
 
 - Production Docker app/worker build and healthy application startup verified.
-- Live browser: Connections loads, refreshes the disconnected state, compiles the fictional sample, reports one page with readable PDF text, and displays PDF/source links and the PDF frame.
+- Live browser: Connections loads, refreshes the disconnected state, compiles the fictional sample, reports one page with readable PDF text, and displays PDF/source links. The native PDF frame was blank in the in-app browser, so the preview now uses Poppler's raster of the actual PDF. The 1020×1320 image loaded successfully and was visually inspected. Screenshot: ignored `runtime/m1/pdf-preview.png`; sample PDF and PNG are in the same directory.
 - 80 Playwright checks passed, including page accessibility in light/dark layouts, keyboard interactions, and the mocked device-code/structured-result flow.
-- Full lint/type/test/coverage results: final rerun pending. The earlier full run found a static route-wrapper audit failure; exports now directly use the standard session/origin wrapper. Coverage collection was restricted to code extensions because the broad upstream glob attempted to parse the font README; thresholds are unchanged.
+- Lint and typecheck passed. Full suite: 1,697 passed, 26 live checks skipped. Coverage passed unchanged thresholds: statements 86.59%, branches 80.13%, functions 84.79%, lines 88.63%. The earlier full run found a static route-wrapper audit failure; exports now directly use the standard session/origin wrapper. Coverage collection was restricted to code extensions because the broad upstream glob attempted to parse the font README; thresholds are unchanged.
 - Independent reviews found and resolved shutdown-during-claim and late-cancellation stage inconsistencies. Regressions cover both, durable checkpoint ordering, malformed Codex events, stale leases, competing claims, cancellation, quota/auth blocks, and logout with more than thirty queued records.
+- After the preview change: production Docker rebuild, lint, typecheck, and all 20 focused LaTeX/proxy/Connections tests passed. This includes rejection of an invalid generated preview.
 
 ## Required live gate and limitations
 
-The user must complete ChatGPT sign-in through Settings → Connections, then a real diagnostic must finish with a verified structured response. This has **not yet been verified**. A model catalog or successful unsigned-in app-server handshake does not establish subscription execution. API-compatible and Ollama transports are fixture-verified, not proof of a locally installed model's capabilities.
+The user must complete ChatGPT sign-in through Settings → Connections, then a real diagnostic must finish with a verified structured response. This has **not yet been verified**. On November 2 the app still reported Not connected and the credential file was absent (only file existence was inspected). A model catalog or successful unsigned-in app-server handshake does not establish subscription execution. API-compatible and Ollama transports are fixture-verified, not proof of a locally installed model's capabilities.
 
 M1 is an execution/toolchain diagnostic, not V5 tailoring. Profile/KB/template registration begins in M2; discovery and the full tailoring queue arrive in later milestones. The sample tests package compatibility, not every future resume's layout. Full V5 source masters remain untouched.
 

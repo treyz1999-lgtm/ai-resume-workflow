@@ -12,6 +12,7 @@ async function root() { const path = await mkdtemp(join(tmpdir(), "arw-latex-"))
 function tools(info = "Pages: 1\n", text = "Project Aurora\nFictional document toolchain check") {
   return vi.fn<ToolRunner>(async (command, _args, cwd) => {
     if (command === "pdflatex") { await writeFile(join(cwd, "sample.pdf"), "%PDF-1.7\nfixture"); return "compiled"; }
+    if (command === "pdftoppm") { await writeFile(join(cwd, "sample.png"), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])); return ""; }
     return command === "pdfinfo" ? info : text;
   });
 }
@@ -24,13 +25,23 @@ describe("fixed local LaTeX sample", () => {
     expect(result.pages).toBe(1);
     expect(await readFile(artifactPath(directory, result.id, "sample.tex"), "utf8")).toBe(SAMPLE_TEX);
     expect(runner.mock.calls[0][1]).toContain("-no-shell-escape");
-    expect(runner.mock.calls.map(call => call[0])).toEqual(["pdflatex", "pdfinfo", "pdftotext"]);
+    expect(runner.mock.calls.map(call => call[0])).toEqual(["pdflatex", "pdfinfo", "pdftotext", "pdftoppm"]);
+    expect(runner.mock.calls[3][1]).toEqual(["-f", "1", "-singlefile", "-r", "120", "-png", "sample.pdf", "sample"]);
+    expect((await readFile(artifactPath(directory, result.id, "sample.png"))).length).toBeGreaterThan(0);
   });
   it.each([["Pages: 2\n", "Project Aurora\nFictional document toolchain check"], ["", ""], ["Pages: 1\n", "unreadable"]])("rejects failed page/text verification", async (info, text) => {
     await expect(compileSample(await root(), tools(info, text))).rejects.toThrow("could not be compiled and verified");
   });
   it("redacts compiler errors", async () => {
     await expect(compileSample(await root(), async () => { throw new Error("secret key private path"); })).rejects.toThrow("Check the worker toolchain");
+  });
+  it("rejects an invalid raster preview", async () => {
+    const fixture = tools();
+    const runner: ToolRunner = async (command, args, cwd) => {
+      if (command === "pdftoppm") { await writeFile(join(cwd, "sample.png"), "invalid"); return ""; }
+      return fixture(command, args, cwd);
+    };
+    await expect(compileSample(await root(), runner)).rejects.toThrow("could not be compiled and verified");
   });
   it("never returns a non-PDF result", async () => {
     const runner: ToolRunner = async (_command, _args, cwd) => { await writeFile(join(cwd, "sample.pdf"), "not a PDF"); return ""; };

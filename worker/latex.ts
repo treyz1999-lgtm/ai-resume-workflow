@@ -47,10 +47,10 @@ const runTool: ToolRunner = (command, args, cwd) => new Promise((resolveOutput, 
   });
 });
 
-/** Only the two generated sample artifacts can be served. No caller path input. */
+/** Only registered generated sample artifacts can be served. No caller path input. */
 export function artifactPath(root: string, id: string, file: string): string {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-    || (file !== "sample.pdf" && file !== "sample.tex")) {
+    || (file !== "sample.pdf" && file !== "sample.tex" && file !== "sample.png")) {
     throw new Error("Unknown document artifact.");
   }
   const base = resolve(root);
@@ -75,6 +75,9 @@ export async function compileSample(root: string, runner: ToolRunner = runTool):
     if (pages !== 1 || !text.includes("Project Aurora") || !text.includes("Fictional document toolchain check")) {
       throw new Error("Invalid verification result");
     }
+    await runner("pdftoppm", ["-f", "1", "-singlefile", "-r", "120", "-png", "sample.pdf", "sample"], directory);
+    const preview = await readFile(artifactPath(root, id, "sample.png"));
+    if (!preview.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) throw new Error("Invalid PNG preview");
     return { id, pages, text };
   } catch {
     throw new Error("The sample PDF could not be compiled and verified. Check the worker toolchain and try again.");
