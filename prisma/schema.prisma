@@ -42,6 +42,40 @@ model ExecutionRun {
 
 // ─── Profile (E2-1) ──────────────────────────────────────────────────────────
 
+/// Additional validated context for an existing profile project or work role.
+model KnowledgeDetail {
+  kind String
+  entryId String
+  context String @default("")
+  architecture String @default("")
+  architectureImage String @default("")
+  includeSwe Boolean @default(true)
+  includeData Boolean @default(true)
+  updatedAt DateTime @updatedAt
+  @@id([kind, entryId])
+}
+
+/// Immutable complete knowledge captured on KB read or before a workflow.
+model KnowledgeSnapshot {
+  id String @id @default(cuid())
+  version Int @unique @default(autoincrement())
+  schemaVersion Int @default(1)
+  digest String
+  payload Json
+  createdAt DateTime @default(now())
+}
+
+/// Uploaded reference documents never automatically modify validated profile facts.
+model ResumeAsset {
+  id String @id @default(cuid())
+  name String
+  mimeType String
+  size Int
+  sha256 String
+  data Bytes
+  createdAt DateTime @default(now())
+}
+
 /// The profile's basics (name, headline, contact details, summary…), one row
 /// per filled-in field. The keys and how each value is written are in
 /// src/lib/profile.ts (PROFILE_KEYS); a missing key means empty.
