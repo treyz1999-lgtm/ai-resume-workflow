@@ -36,6 +36,7 @@ function operation(method: string, path: string[]) {
   if (method === "POST" && key === "logout") return { key, body: empty, result: z.object({}) };
   if (method === "POST" && key === "runs") return { key, body: z.object({ model: z.string().trim().min(1).max(200).optional() }).strict(), result: run };
   if (method === "POST" && key === "latex/sample") return { key, body: empty, result: artifact };
+  if (method === "POST" && ["templates/swe", "templates/data", "templates/cover-letter"].includes(key)) return { key, body: empty, result: artifact };
   if (path.length >= 2 && path[0] === "runs" && id.safeParse(path[1]).success) {
     if (method === "GET" && path.length === 2) return { key, result: run };
     if (method === "POST" && path.length === 3 && ["cancel", "resume"].includes(path[2])) return { key, body: empty, result: run };
@@ -97,7 +98,7 @@ const proxy = async (request: NextRequest, { params }: { params: Promise<{ path:
       } });
     }
     const data = selected.result!.parse(await response.json());
-    if (selected.key === "latex/sample") {
+    if (selected.key === "latex/sample" || selected.key.startsWith("templates/")) {
       const value = artifact.parse(data);
       return Response.json({ ...value, pdfUrl: `/api/execution/artifacts/${value.id}/sample.pdf`, sourceUrl: `/api/execution/artifacts/${value.id}/sample.tex` });
     }

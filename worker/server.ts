@@ -8,6 +8,7 @@ import { CodexAdapter } from "./codex";
 import { compileSample, artifactPath } from "./latex";
 import { ExecutionStore, view } from "./store";
 import { ExecutionRunner } from "./runner";
+import { previewPdf } from "./pdf-preview";
 
 const token = process.env.DOSSIER_SECRET;
 if (!token || token.length < 32 || !process.env.DATABASE_URL) throw new Error("Worker configuration is missing.");
@@ -43,6 +44,21 @@ const server = createServer(async (request, response) => {
   const path = request.url ?? "";
   const method = request.method;
   try {
+    if (method === "POST" && path === "/library/preview") {
+      if (compiling) return json(response, { error: "Document tools are busy. Try again." }, 409);
+      compiling = true;
+      try {
+        const chunks: Buffer[] = []; let size = 0;
+        for await (const chunk of request) {
+          const bytes = Buffer.from(chunk); size += bytes.length;
+          if (size > 10 * 1024 * 1024) return json(response, { error: "PDF too large." }, 413);
+          chunks.push(bytes);
+        }
+        const png = await previewPdf(Buffer.concat(chunks), join(process.env.EXECUTION_ROOT ?? "/work", "previews"));
+        response.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-store" });
+        return response.end(png);
+      } finally { compiling = false; }
+    }
     if (method === "GET" && path === "/health") return json(response, { ok: true });
     if (method === "GET" && path === "/connection") return json(response, await adapter.connection());
     if (method === "GET" && path === "/runs") return json(response, await store.list());

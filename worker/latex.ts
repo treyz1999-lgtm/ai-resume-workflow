@@ -60,19 +60,24 @@ export function artifactPath(root: string, id: string, file: string): string {
 }
 
 export async function compileSample(root: string, runner: ToolRunner = runTool): Promise<{ id: string; pages: number; text: string }> {
+  return compileDocument(root, SAMPLE_TEX, ["Project Aurora", "Fictional document toolchain check"], runner);
+}
+
+/** Internal trusted renderer output only; never accept caller-supplied TeX through HTTP. */
+export async function compileDocument(root: string, sourceText: string, requiredText: string[], runner: ToolRunner = runTool): Promise<{ id: string; pages: number; text: string }> {
   const id = randomUUID();
   const source = artifactPath(root, id, "sample.tex");
   const directory = resolve(root, id);
   try {
     await mkdir(directory, { recursive: true, mode: 0o700 });
-    await writeFile(source, SAMPLE_TEX, { encoding: "utf8", flag: "wx", mode: 0o600 });
+    await writeFile(source, sourceText, { encoding: "utf8", flag: "wx", mode: 0o600 });
     await runner("pdflatex", ["-no-shell-escape", "-interaction=nonstopmode", "-halt-on-error", "-file-line-error", "sample.tex"], directory);
     const pdf = await readFile(artifactPath(root, id, "sample.pdf"));
     if (!pdf.subarray(0, 5).equals(Buffer.from("%PDF-"))) throw new Error("Invalid PDF");
     const info = await runner("pdfinfo", ["sample.pdf"], directory);
     const pages = Number(/^Pages:\s*(\d+)\s*$/m.exec(info)?.[1]);
     const text = (await runner("pdftotext", ["-layout", "sample.pdf", "-"], directory)).trim();
-    if (pages !== 1 || !text.includes("Project Aurora") || !text.includes("Fictional document toolchain check")) {
+    if (pages !== 1 || requiredText.some(value => !text.includes(value))) {
       throw new Error("Invalid verification result");
     }
     await runner("pdftoppm", ["-f", "1", "-singlefile", "-r", "120", "-png", "sample.pdf", "sample"], directory);

@@ -24,5 +24,6 @@ CREATE TABLE "ResumeAsset" (
   "size" INTEGER NOT NULL,
   "sha256" TEXT NOT NULL,
   "data" BYTEA NOT NULL,
+  "preview" BYTEA NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

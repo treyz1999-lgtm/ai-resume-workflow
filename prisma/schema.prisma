@@ -73,6 +73,7 @@ model ResumeAsset {
   size Int
   sha256 String
   data Bytes
+  preview Bytes
   createdAt DateTime @default(now())
 }
 
