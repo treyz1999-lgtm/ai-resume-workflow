@@ -1,4 +1,4 @@
-# M1 review record — in progress
+# M1 review record — ready for user review
 
 Updated November 2, 2026. M0 is approved and published; M1 remains local on `milestone/m1`. Do not push M1 or begin M2 until the milestone is demonstrated and the user approves.
 
@@ -19,9 +19,11 @@ Updated November 2, 2026. M0 is approved and published; M1 remains local on `mil
 - Independent reviews found and resolved shutdown-during-claim and late-cancellation stage inconsistencies. Regressions cover both, durable checkpoint ordering, malformed Codex events, stale leases, competing claims, cancellation, quota/auth blocks, and logout with more than thirty queued records.
 - After the preview change: production Docker rebuild, lint, typecheck, and all 20 focused LaTeX/proxy/Connections tests passed. This includes rejection of an invalid generated preview.
 
-## Required live gate and limitations
+## Live acceptance and limitations
 
-The user must complete ChatGPT sign-in through Settings → Connections, then a real diagnostic must finish with a verified structured response. This has **not yet been verified**. On November 2 the app still reported Not connected and the credential file was absent (only file existence was inspected). A model catalog or successful unsigned-in app-server handshake does not establish subscription execution. API-compatible and Ollama transports are fixture-verified, not proof of a locally installed model's capabilities.
+On November 2, after the user completed OpenAI's device authorization, Connections displayed Connected and the real `gpt-6.1-sol` diagnostic completed with `{"status":"ok","message":"Received the fictional project Aurora."}`. The application verified its structured response. This ran through ChatGPT-authenticated Codex in Docker, with no API fallback. A subsequent worker restart preserved both authentication and the completed run. Ignored screenshot: `runtime/m1/codex-live-success.png`.
+
+Cancellation, disconnect, expired-authentication, and quota behavior were verified with deterministic fixtures; this review did not deliberately exhaust the user's allowance or revoke their fresh sign-in. API-compatible and Ollama transports are fixture-verified, not proof of a locally installed model's capabilities. Credentials remain outside Git and ordinary backups. No additional live model runs are needed for this gate.
 
 M1 is an execution/toolchain diagnostic, not V5 tailoring. Profile/KB/template registration begins in M2; discovery and the full tailoring queue arrive in later milestones. The sample tests package compatibility, not every future resume's layout. Full V5 source masters remain untouched.
 
