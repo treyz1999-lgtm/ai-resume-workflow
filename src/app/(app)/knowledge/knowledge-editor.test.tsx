@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { KnowledgeEntry } from "./knowledge-entry";
 import { WorkflowPreferencesEditor } from "./preferences-editor";
+import { knowledgeDetailSchema } from "@/lib/knowledge-contracts";
 
 const { saveDetail, savePreferences, refresh } = vi.hoisted(() => ({ saveDetail: vi.fn(), savePreferences: vi.fn(), refresh: vi.fn() }));
 vi.mock("./actions", () => ({ saveDetail, savePreferences }));
@@ -11,6 +12,19 @@ beforeEach(() => {
   saveDetail.mockReset().mockResolvedValue({ ok: true, data: null });
   savePreferences.mockReset().mockResolvedValue({ ok: true, data: null });
   refresh.mockReset();
+});
+
+it("can edit a saved Prisma detail without submitting database metadata", async () => {
+  saveDetail.mockImplementation(async input => ({ ok: knowledgeDetailSchema.safeParse(input).success, data: null, error: "Invalid request" }));
+  const stored = { kind: "project", entryId: "project-1", updatedAt: new Date("2026-11-02T00:00:00Z"),
+    context: "Original context", architecture: "", architectureImage: "", includeSwe: true, includeData: true };
+  render(<KnowledgeEntry kind="project" entryId="project-1" title="Aurora" initial={stored} />);
+  await userEvent.click(screen.getByText("Aurora", { exact: true }));
+  await userEvent.clear(screen.getByLabelText("Validated context and evidence"));
+  await userEvent.type(screen.getByLabelText("Validated context and evidence"), "Revised context");
+  await userEvent.click(screen.getByRole("button", { name: "Save context" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Context saved");
+  expect(saveDetail).toHaveBeenCalledWith({ kind: "project", entryId: "project-1", context: "Revised context", architecture: "", architectureImage: "", includeSwe: true, includeData: true });
 });
 
 it("saves role context and track-specific inclusion without altering its identity", async () => {

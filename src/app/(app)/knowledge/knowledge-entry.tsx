@@ -15,7 +15,11 @@ const empty: Detail = { context: "", architecture: "", architectureImage: "", in
 
 export function KnowledgeEntry({ kind, entryId, title, initial }: { kind: "project" | "experience"; entryId: string; title: string; initial?: Detail }) {
   const router = useRouter();
-  const [value, setValue] = useState<Detail>(initial ?? empty);
+  const [value, setValue] = useState<Detail>(() => {
+    const detail = initial ?? empty;
+    return { context: detail.context, architecture: detail.architecture, architectureImage: detail.architectureImage,
+      includeSwe: detail.includeSwe, includeData: detail.includeData };
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
