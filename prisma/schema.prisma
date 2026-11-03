@@ -20,6 +20,61 @@ datasource db {
 }
 
 /// Internal M1 diagnostic runs, separate from application attempts and upstream jobs.
+model DiscoveryControl {
+  id String @id @default("discovery")
+  config Json
+  nextTickAt DateTime?
+  sessionUntil DateTime?
+  updatedAt DateTime @updatedAt
+}
+
+model DiscoveryScan {
+  id String @id @default(cuid())
+  status String @default("QUEUED")
+  manual Boolean @default(false)
+  owner String?
+  leaseUntil DateTime?
+  stage String?
+  sourceResults Json?
+  error String?
+  createdAt DateTime @default(now())
+  finishedAt DateTime?
+  @@index([status, createdAt])
+}
+
+model DiscoveryPosting {
+  id String @id @default(cuid())
+  identityKey String
+  occurrenceKey String @unique
+  source String
+  externalId String
+  url String @default("")
+  company String @default("")
+  role String @default("")
+  jd String
+  complete Boolean @default(false)
+  postingEvidence Json
+  postedAt DateTime?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  sightings Int @default(1)
+  extracted Json?
+  coverage Json?
+  kbSnapshotId String?
+  state String @default("NEW")
+  analysisError String?
+  selection TailoringSelection?
+  @@index([identityKey, firstSeenAt])
+  @@index([state, lastSeenAt])
+}
+
+model TailoringSelection {
+  id String @id @default(cuid())
+  postingId String @unique
+  posting DiscoveryPosting @relation(fields: [postingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
 model ExecutionRun {
   id         String   @id
   status     String   @default("QUEUED")
