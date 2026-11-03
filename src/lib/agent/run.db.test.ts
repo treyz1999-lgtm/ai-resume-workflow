@@ -230,7 +230,7 @@ describe("runAgentScan (E16-3)", () => {
     expect(await prisma().agentCandidate.count()).toBeLessThanOrEqual(1);
   });
 
-  it("queues drafts for the best new postings when auto-draft is on, up to the cap (#197)", async () => {
+  it("never queues drafts even when legacy auto-draft settings are enabled", async () => {
     const { startJob } = await import("@/lib/jobs/runner");
     vi.mocked(startJob).mockClear();
     expect((await runAgentScan({ manual: false }, context(), now)).drafted).toBe(0);
@@ -239,9 +239,10 @@ describe("runAgentScan (E16-3)", () => {
     await prisma().agentCandidate.deleteMany();
     await saveSettings({ agentAutoDraft: true, agentMaxDrafts: 1 });
     const result = await runAgentScan({ manual: true }, context(), new Date(now.getTime() + 2 * hour));
-    expect(result).toMatchObject({ scored: 3, drafted: 1, message: "2 new postings are waiting for a look. Preparing a draft for the best one." });
-    const best = await prisma().agentCandidate.findFirstOrThrow({ where: { externalId: "a" } });
-    expect(startJob).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: "agent-draft" }), { candidateId: best.id }, { key: `agent-candidate:${best.id}` });
+    expect(result).toMatchObject({ scored: 3, drafted: 0, message: "2 new postings are waiting for a look." });
+    expect(startJob).not.toHaveBeenCalled();
+    expect(await prisma().application.count()).toBe(0);
+    expect(await prisma().document.count()).toBe(0);
   });
 
   it("says when nothing reached the minimum score", async () => {

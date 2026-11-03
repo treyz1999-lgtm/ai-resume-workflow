@@ -1,6 +1,6 @@
-# M2 — ready for review
+# M2 — approved
 
-November 3, 2026. M1 was approved and pushed as `39d27b2`. M2 remains local on `milestone/m2`; no M2 push or M3 work until approval.
+November 3, 2026. M1 was approved and pushed as `39d27b2`. The user approved M2; `e998bdf` was pushed to `origin/main` on November 3, 2026. The evidence below records the reviewed implementation. M3 is now authorized and in progress.
 
 ## Working features
 

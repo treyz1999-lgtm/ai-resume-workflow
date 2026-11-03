@@ -22,13 +22,12 @@ export async function register() {
     const { startInboxSchedule } = await import("@/lib/google/sync");
     startInboxSchedule();
 
-    // The job agent's daily run, while it's on (E16-4).
-    const { startAgentSchedule } = await import("@/lib/agent/schedule");
-    startAgentSchedule();
+    // Discovery is independent of tailoring, with durable interval/window claims.
+    const { startDiscoverySchedule } = await import("@/lib/discovery/scheduler");
+    startDiscoverySchedule();
 
-    // Startups' daily refresh, once it was refreshed by hand and while the screen is in use (#222).
-    const { startStartupsSchedule } = await import("@/lib/startups/schedule");
-    startStartupsSchedule();
+    // Startup sources participate in the same discovery schedule. The legacy
+    // daily startup timer would bypass the user's selected windows and sessions.
 
     // DOSSIER_JOBS_SOURCE=arbeitsagentur: the log says what that choice means (#223).
     const { arbeitsagenturStartupNotice, loadJobSearchConfig } = await import("@/lib/job-search/config");

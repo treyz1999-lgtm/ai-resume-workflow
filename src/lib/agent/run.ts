@@ -3,7 +3,6 @@ import "server-only";
 import { z } from "zod";
 
 import { Prisma } from "@/generated/prisma/client";
-import { AgentCandidateStatus } from "@/generated/prisma/enums";
 import { getAiProvider } from "@/lib/ai";
 import { isAiConfigured } from "@/lib/ai/config";
 import { AiError } from "@/lib/ai/errors";
@@ -13,7 +12,7 @@ import { searchPostings } from "@/lib/job-search";
 import { credentialsFor, loadJobSearchConfig, requestContext } from "@/lib/job-search/config";
 import { JobSearchError } from "@/lib/job-search/errors";
 import { postingKey, postingText, type FoundPosting, type SearchQuery } from "@/lib/job-search/search";
-import { startJob, type JobContext } from "@/lib/jobs/runner";
+import type { JobContext } from "@/lib/jobs/runner";
 import { logServerError } from "@/lib/log";
 import { saveScore } from "@/lib/posting-scores";
 import { postingStates } from "@/lib/postings";
@@ -22,7 +21,6 @@ import { loadProfile } from "@/lib/profile-data";
 import { loadSettings } from "@/lib/settings-data";
 
 import { agentDedupeKey, candidateData } from "./candidates";
-import { agentDraftJob, draftJobKey } from "./draft";
 import { recordRunEnd, recordRunStart, runLimitProblem } from "./runs";
 
 // One run of the job agent (E16-3): one search, the postings seen before
@@ -93,8 +91,8 @@ const newestFirst = (a: FoundPosting, b: FoundPosting) => (b.postedAt ? Date.par
  * One run: the first page of results only (one source request), then a
  * score for the newest new postings, up to agentMaxScores. Each is kept as a
  * candidate, so it doesn't come back; one below agentMinScore stays out of
- * the queue. With auto-draft on, the best of them get a draft each, up to
- * agentMaxDrafts, each its own job. A scheduled run does nothing while the
+ * the queue. Draft creation is disabled in this fork.
+ * A scheduled run does nothing while the
  * agent is off.
  */
 export async function runAgentScan({ manual }: { manual: boolean }, context: JobContext, now = new Date()): Promise<AgentScanResult> {
@@ -132,7 +130,6 @@ export async function runAgentScan({ manual }: { manual: boolean }, context: Job
   const [provider, options, profile] = await Promise.all([getAiProvider(), loadTaskOptions(), loadProfile()]);
   let scored = 0;
   let queued = 0;
-  const kept: string[] = [];
   let problem: string | null = null;
   for (const posting of toScore) {
     if (context.signal.aborted) break;
@@ -142,10 +139,9 @@ export async function runAgentScan({ manual }: { manual: boolean }, context: Job
         { posting: postingText(posting), title: posting.title, company: posting.company, place: posting.place, remote: posting.remote, salary: posting.salary, profile },
         { ...options, signal: context.signal },
       );
-      const candidate = await prisma.agentCandidate.create({ data: candidateData(posting, data), select: { id: true } });
+      await prisma.agentCandidate.create({ data: candidateData(posting, data), select: { id: true } });
       // Find jobs shows it too (#208).
       await saveScore(posting, data, promptVersion);
-      kept.push(candidate.id);
       scored += 1;
       if (data.score >= settings.agentMinScore) queued += 1;
     } catch (error) {
@@ -157,18 +153,8 @@ export async function runAgentScan({ manual }: { manual: boolean }, context: Job
     }
   }
 
-  // Auto-draft (#197, off by default): the best of this run's, one job each.
-  let drafted = 0;
-  if (settings.agentAutoDraft && settings.agentMaxDrafts > 0 && !context.signal.aborted) {
-    const best = await prisma.agentCandidate.findMany({
-      where: { id: { in: kept }, status: AgentCandidateStatus.SCORED, score: { gte: settings.agentMinScore } },
-      orderBy: { score: "desc" },
-      take: settings.agentMaxDrafts,
-      select: { id: true },
-    });
-    for (const { id } of best) await startJob(agentDraftJob, { candidateId: id }, { key: draftJobKey(id) });
-    drafted = best.length;
-  }
+  // Discovery never creates drafts, including installations with legacy auto-draft enabled.
+  const drafted = 0;
 
   const waiting = `${queued} new ${queued === 1 ? "posting is" : "postings are"} waiting for a look.`;
   const message =
@@ -176,8 +162,6 @@ export async function runAgentScan({ manual }: { manual: boolean }, context: Job
       ? (problem ?? "No postings could be scored this time.")
       : queued === 0
         ? `Scored ${scored} new ${scored === 1 ? "posting" : "postings"}; none reached your minimum score of ${settings.agentMinScore}.`
-        : drafted > 0
-          ? `${waiting} Preparing ${drafted === 1 ? "a draft for the best one" : `drafts for the best ${drafted}`}.`
-          : waiting;
+        : waiting;
   return finish({ ...counts, scored, drafted, message });
 }
