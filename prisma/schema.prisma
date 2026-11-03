@@ -32,6 +32,9 @@ model DiscoveryScan {
   id String @id @default(cuid())
   status String @default("QUEUED")
   manual Boolean @default(false)
+  input Json?
+  config Json?
+  kbSnapshotId String?
   owner String?
   leaseUntil DateTime?
   stage String?

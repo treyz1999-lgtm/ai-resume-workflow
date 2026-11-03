@@ -5,6 +5,7 @@ CREATE TABLE "DiscoveryControl" (
 );
 CREATE TABLE "DiscoveryScan" (
  "id" TEXT NOT NULL, "status" TEXT NOT NULL DEFAULT 'QUEUED', "manual" BOOLEAN NOT NULL DEFAULT false,
+ "input" JSONB, "config" JSONB, "kbSnapshotId" TEXT,
  "owner" TEXT, "leaseUntil" TIMESTAMP(3), "stage" TEXT, "sourceResults" JSONB, "error" TEXT,
  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "finishedAt" TIMESTAMP(3),
  CONSTRAINT "DiscoveryScan_pkey" PRIMARY KEY ("id"),
