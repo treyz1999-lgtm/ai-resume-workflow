@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Keep the entire action below Next's default 1 MB request bound. */
+/** Image bound leaves room for full Unicode context under the app's 2 MB action cap. */
 export const ARCHITECTURE_IMAGE_MAX_BYTES = 512 * 1024;
 const imageLimit = 4 * Math.ceil(ARCHITECTURE_IMAGE_MAX_BYTES / 3) + 30;
 

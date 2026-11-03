@@ -50,7 +50,7 @@ it("does not promote application facts or uploaded resumes and omits deleted-ent
   await prisma().project.create({ data: { id: "aurora", name: "Aurora" } });
   await saveKnowledgeDetail(detail);
   await prisma().project.delete({ where: { id: "aurora" } });
-  await prisma().resumeAsset.create({ data: { name: "Old resume.pdf", mimeType: "application/pdf", size: 7, sha256: "fixture", data: Buffer.from("private") } });
+  await prisma().resumeAsset.create({ data: { name: "Old resume.pdf", mimeType: "application/pdf", size: 7, sha256: "fixture", data: Buffer.from("private"), preview: Buffer.from("preview") } });
   // A non-null applicationId is the boundary; only global facts belong in the KB.
   const app = await prisma().application.create({ data: { company: "Example", role: "Analyst" } });
   await prisma().fact.create({ data: { applicationId: app.id, text: "Application-specific speculation" } });

@@ -1,11 +1,12 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
 import { z } from "zod";
 import { CodexAdapter } from "./codex";
-import { compileSample, artifactPath } from "./latex";
+import { compileSample, compileDocument, artifactPath } from "./latex";
+import { renderV5Resume, renderCoverLetter, fictionalResume, fictionalCoverLetter } from "../src/lib/templates/v5";
 import { ExecutionStore, view } from "./store";
 import { ExecutionRunner } from "./runner";
 import { previewPdf } from "./pdf-preview";
@@ -54,7 +55,7 @@ const server = createServer(async (request, response) => {
           if (size > 10 * 1024 * 1024) return json(response, { error: "PDF too large." }, 413);
           chunks.push(bytes);
         }
-        const png = await previewPdf(Buffer.concat(chunks), join(process.env.EXECUTION_ROOT ?? "/work", "previews"));
+        const png = await previewPdf(Buffer.concat(chunks), "/tmp/ai-resume-previews");
         response.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-store" });
         return response.end(png);
       } finally { compiling = false; }
@@ -99,11 +100,13 @@ const server = createServer(async (request, response) => {
         await store.cancelAll();
         await adapter.logout(); return json(response, { ok: true });
       }
-      if (path === "/latex/sample") {
+      if (path === "/latex/sample" || ["/templates/swe", "/templates/data", "/templates/cover-letter"].includes(path)) {
         if (compiling) return json(response, { error: "A sample is already compiling." }, 409);
         compiling = true;
         try {
-          const result = await compileSample(root);
+          const result = path === "/latex/sample" ? await compileSample(root) : await compileDocument(root,
+            path === "/templates/cover-letter" ? renderCoverLetter(fictionalCoverLetter) : renderV5Resume(path === "/templates/data" ? "data" : "swe", fictionalResume),
+            ["Morgan Example"]);
           return json(response, { ...result, pdfUrl: `/api/execution/artifacts/${result.id}/sample.pdf`, sourceUrl: `/api/execution/artifacts/${result.id}/sample.tex` });
         } finally { compiling = false; }
       }
@@ -119,6 +122,9 @@ const server = createServer(async (request, response) => {
 
 // Migrations run in the application service. Do not crash-loop while it initializes.
 async function start() {
+  // Fixed scratch-only directory: remove abandoned uploads after interrupted conversion.
+  // Credentials, saved library documents, and execution artifacts are elsewhere.
+  await rm("/tmp/ai-resume-previews", { recursive: true, force: true });
   for (let attempt = 0; ; attempt++) {
     try { await pool.query('SELECT id FROM "ExecutionRun" LIMIT 1'); break; }
     catch { if (attempt >= 59) throw new Error("Worker database is not ready."); await new Promise(resolve => setTimeout(resolve, 1000)); }

@@ -28,6 +28,8 @@ const SCREENS = [
   "/applications?view=table",
   "/new",
   "/profile",
+  "/knowledge",
+  "/library",
   "/profile?section=skills",
   "/profile?section=experience",
   "/profile?section=projects",

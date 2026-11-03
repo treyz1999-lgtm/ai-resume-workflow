@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 in progress; M3–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 ready for review; M3–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -44,11 +44,11 @@ Gate: app starts locally, failures are documented, private files stay outside Gi
 
 Owners: workflow/infrastructure; product owns Connections UI.
 
-- [ ] Codex sign-in/out, connection test, streamed progress, usage limits; auth stored separately from ordinary backups.
-- [ ] Prove subscription execution inside Docker without silent API billing fallback.
-- [ ] Bundle registered V5 master's compiler/PDF dependencies; retain hosted/local providers and endpoints.
-- [ ] Structured adapter round trip for real Codex, API-compatible fixture, and local transport.
-- [ ] Preserve interrupted/quota-blocked jobs for continuation.
+- [x] Codex sign-in/out, connection test, streamed progress, usage limits; auth stored separately from ordinary backups.
+- [x] Prove subscription execution inside Docker without silent API billing fallback.
+- [x] Bundle registered V5 master's compiler/PDF dependencies; retain hosted/local providers and endpoints.
+- [x] Structured adapter round trip for real Codex, API-compatible fixture, and local transport.
+- [x] Preserve interrupted/quota-blocked jobs for continuation.
 
 Gate: application sign-in and real Codex task, fictional LaTeX compilation, preview/download; disconnect, cancellation, expired auth, and quota tests. Pause with evidence if subscription execution is blocked.
 
@@ -56,12 +56,12 @@ Gate: application sign-in and real Codex task, fictional LaTeX compilation, prev
 
 Owners: product/coordinator; infrastructure owns templates.
 
-- [ ] Editable Profile, Work History, Projects; architecture Mermaid or image uploads and explanation.
-- [ ] Complete versioned KB snapshots; discovery preferences with flexible titles and explicit constraints.
-- [ ] Resume upload/preview/download/history as references; no automatic validated-KB updates from uploads.
-- [ ] V5 SWE/Data presets from existing master/policies; preserve source masters and MIT attribution. Per-variant work-history inclusion is data-driven.
-- [ ] Twelve upstream themes as overrides; Auto/SWE/Data, template override, cover-letter toggle.
-- [ ] Basic LaTeX cover-letter template.
+- [x] Editable Profile, Work History, Projects; architecture Mermaid or image uploads and explanation.
+- [x] Complete versioned KB snapshots; discovery preferences with flexible titles and explicit constraints.
+- [x] Resume upload/preview/download/history as references; no automatic validated-KB updates from uploads.
+- [x] V5 SWE/Data presets from existing master/policies; preserve source masters and MIT attribution. Per-variant work-history inclusion is data-driven.
+- [x] Twelve upstream themes as overrides; Auto/SWE/Data, template override, cover-letter toggle.
+- [x] Basic LaTeX cover-letter template.
 
 Gate: edits update KB without changing history; fictional SWE/Data compile; theme overrides and library previews work.
 
