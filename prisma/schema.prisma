@@ -35,6 +35,7 @@ model DiscoveryScan {
   input Json?
   config Json?
   kbSnapshotId String?
+  checkpoint Json?
   owner String?
   leaseUntil DateTime?
   stage String?
