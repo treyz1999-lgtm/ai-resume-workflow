@@ -87,13 +87,21 @@ export async function owned<T>(id: string, owner: string, work: (tx: Db) => Prom
 export async function rememberPosting(tx: Db, posting: DiscoveryInput, now: Date) {
   const identityKey = postingIdentity(posting);
   const candidates = await tx.discoveryPosting.findMany({ where: { OR: [{ identityKey }, ...(posting.externalId ? [{ source: posting.source, externalId: posting.externalId }] : [])] }, orderBy: { firstSeenAt: "desc" } });
-  const known = candidates.find(row => sameOccurrence(postingEvidenceSchema.parse(row.postingEvidence), posting.postingEvidence));
+  const known = candidates.find(row => {
+    const original = postingEvidenceSchema.parse(row.postingEvidence);
+    // A later absolute date can identify an originally undated posting. Keep
+    // the first raw label while using the confirmed date for future comparisons.
+    const resolved = row.postedAt ? { ...original, kind: "absolute" as const, date: row.postedAt.toISOString() } : original;
+    return sameOccurrence(resolved, posting.postingEvidence);
+  });
   if (known) {
     // Preserve the original observation in its scan checkpoint. A complete JD can
     // replace a source snippet, but another sighting cannot overwrite a full JD.
     const upgrade = !known.complete && posting.complete;
     const row = await tx.discoveryPosting.update({ where: { id: known.id }, data: {
       lastSeenAt: now, sightings: { increment: 1 },
+      ...(!known.postedAt && posting.postingEvidence.kind === "absolute" && posting.postingEvidence.date
+        ? { postedAt: new Date(posting.postingEvidence.date) } : {}),
       ...(upgrade ? { jd: posting.jd, complete: true, coverage: Prisma.DbNull, extracted: Prisma.DbNull,
         kbSnapshotId: null, analysisError: null } : {}),
     } });

@@ -77,6 +77,17 @@ it("upgrades a snippet with complete intake and requires fresh analysis before s
   await expect(selectForTailoring([full.row.id])).rejects.toThrow("successful coverage");
   expect((await observe({ ...posting, complete: false, jd: "Another preview" })).row.jd).toBe(full.row.jd);
 });
+it("distinguishes a subsequent repost after an undated observation receives a confirmed posting date", async () => {
+  const observe = (input: DiscoveryInput) => prisma().$transaction(tx => rememberPosting(tx, input, now));
+  const undated = { ...posting.postingEvidence, raw: "", date: null, kind: "unknown" as const };
+  const initial = await observe({ ...posting, postingEvidence: undated });
+  const confirmed = await observe(posting);
+  expect(confirmed.row.id).toBe(initial.row.id);
+  expect(confirmed.row.postingEvidence).toEqual(undated);
+  expect(confirmed.row.postedAt?.toISOString()).toBe(posting.postingEvidence.date);
+  const repost = await observe({ ...posting, postingEvidence: { ...posting.postingEvidence, date: "2026-11-09T00:00:00.000Z" } });
+  expect(repost.row.id).not.toBe(initial.row.id);
+});
 it("requires explicit selection and successful complete analysis; selection is idempotent and removable", async () => {
   const { row } = await prisma().$transaction(tx => rememberPosting(tx, posting, now));
   expect(await prisma().tailoringSelection.count()).toBe(0);

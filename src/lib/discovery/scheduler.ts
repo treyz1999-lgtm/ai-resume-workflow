@@ -50,6 +50,11 @@ export async function executeScan(scan: DiscoveryScan): Promise<void> {
       } else {
         const collected = await collectDiscovery(config.discovery, config.preferences, abort.signal);
         postings = collected.postings; sources = collected.sources;
+        if (sources.length > 0 && sources.every(result => result.error !== null) && postings.length === 0) {
+          await write(tx => tx.discoveryScan.update({ where: { id: scan.id }, data: { sourceResults: json(sources) } }));
+          // Leave collection uncheckpointed so retry actually asks the sources again.
+          throw new ActionError("Every selected source failed. Check the source results and retry this scan.");
+        }
       }
       checkpoint = { items: postings.map(posting => ({ posting: discoveryInputSchema.parse(posting), done: false })) };
       await write(tx => tx.discoveryScan.update({ where: { id: scan.id }, data: { checkpoint: json(checkpoint), sourceResults: json(sources) } }));
