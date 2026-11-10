@@ -117,7 +117,7 @@ export function postingFromJob(job: Job): FoundPosting {
     url: linkOf(job).slice(0, 2000),
     via: (job.job_publisher ?? "").trim().slice(0, 100),
     description,
-    complete: description.length > 0,
+    complete: description.length > 0 && (job.job_description ?? "").trim().length <= 100_000,
   };
 }
 
@@ -167,7 +167,7 @@ export const jsearch: JobSourceAdapter<"JSEARCH"> = {
   source: "JSEARCH",
   search: searchPage,
   // Search results carry the whole description.
-  details: async (posting) => (posting.description ? posting.description : null),
+  details: async (posting) => (posting.complete && posting.description ? posting.description : null),
   test: async (credentials, context) => {
     await searchPage({ keywords: "developer", place: "", country: "us", radiusKm: 25, remoteOnly: false, postedWithin: "any" }, credentials, null, context);
   },

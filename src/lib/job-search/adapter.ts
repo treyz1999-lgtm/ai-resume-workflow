@@ -16,6 +16,8 @@ export type SourceCredentials = {
 };
 
 export type RequestContext = {
+  /** A scheduled scan bypasses the interactive search cache. */
+  fresh?: boolean;
   /** Replaces the source's own address; for the end-to-end tests' fake source. */
   baseUrl?: string;
   signal?: AbortSignal;

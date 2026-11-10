@@ -150,3 +150,15 @@ describe("subscription adapter", () => {
     await expect(adapter.execute(task, new AbortController().signal, () => {})).rejects.toMatchObject({ code: "transport" });
   });
 });
+
+it("validates a registered task result without weakening the default diagnostic", async () => {
+ const root = await mkdtemp(join(tmpdir(), "discovery-fixture-")); roots.push(root);
+ const rpc = new FakeRpc();
+ const adapter = new CodexAdapter(() => rpc, root, 1000, value => {
+   if (!value || typeof value !== "object" || !("requirements" in value)) throw new Error("invalid");
+   return value;
+ }); adapters.push(adapter);
+ rpc.turn = async client => { queueMicrotask(() => { client.delta('{"requirements":[]}'); client.complete("completed"); }); return { turn: { id: "turn-1", status: "inProgress" } }; };
+ const result = await adapter.execute({ ...task, outputSchema: { type: "object" } }, new AbortController().signal, () => {});
+ expect(result.structured).toEqual({ requirements: [] });
+});

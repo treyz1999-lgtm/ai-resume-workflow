@@ -4,6 +4,9 @@ import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
 import { z } from "zod";
+import { discoveryInputSchema, discoveryAnalysisSchema } from "../src/lib/discovery/contracts";
+import { discoveryPrompt, validateAnalysis, DISCOVERY_CONTEXT_MAX_BYTES } from "../src/lib/discovery/analysis-task";
+import { ExecutionError } from "./rpc";
 import { CodexAdapter } from "./codex";
 import { compileSample, compileDocument, artifactPath } from "./latex";
 import { renderV5Resume, renderCoverLetter, fictionalResume, fictionalCoverLetter } from "../src/lib/templates/v5";
@@ -17,6 +20,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 6 });
 const store = new ExecutionStore(pool);
 const adapter = new CodexAdapter();
 const runner = new ExecutionRunner(store, adapter);
+const discoveryAdapter = new CodexAdapter(undefined, undefined, 210_000, value => discoveryAnalysisSchema.parse(value));
 const root = join(process.env.EXECUTION_ROOT ?? "/work", "artifacts");
 let compiling = false;
 let closing = false;
@@ -31,11 +35,11 @@ function authorized(request: IncomingMessage) {
   const received = request.headers["x-worker-token"];
   return typeof received === "string" && Buffer.byteLength(received) === Buffer.byteLength(token!) && timingSafeEqual(Buffer.from(received), Buffer.from(token!));
 }
-async function body(request: IncomingMessage): Promise<unknown> {
+async function body(request: IncomingMessage, limit = 4096): Promise<unknown> {
   let data = "";
   for await (const part of request) {
     data += String(part);
-    if (Buffer.byteLength(data) > 4096) throw new Error("invalid-request");
+    if (Buffer.byteLength(data) > limit) throw new Error("invalid-request");
   }
   return data ? JSON.parse(data) : {};
 }
@@ -45,6 +49,19 @@ const server = createServer(async (request, response) => {
   const path = request.url ?? "";
   const method = request.method;
   try {
+    if (method === "POST" && path === "/discovery/analyze") {
+      const input = z.object({ posting: discoveryInputSchema, kb: z.unknown(), model: z.string().max(160) }).strict().parse(await body(request, DISCOVERY_CONTEXT_MAX_BYTES));
+      const prompt = discoveryPrompt(input.posting, input.kb);
+      const controller = new AbortController();
+      const abort = () => { if (!response.writableEnded) controller.abort(); };
+      response.on("close", abort);
+      try {
+        const result = await discoveryAdapter.execute({ id: "discovery", prompt, model: input.model || undefined, outputSchema: z.toJSONSchema(discoveryAnalysisSchema) }, controller.signal, () => {});
+        return json(response, validateAnalysis(result.structured, input.posting, input.kb));
+      } catch (error) {
+        return json(response, { code: error instanceof ExecutionError ? error.code : "invalid-result" }, 503);
+      } finally { response.off("close", abort); }
+    }
     if (method === "POST" && path === "/library/preview") {
       if (compiling) return json(response, { error: "Document tools are busy. Try again." }, 409);
       compiling = true;
@@ -98,7 +115,7 @@ const server = createServer(async (request, response) => {
       if (path === "/login") return json(response, await adapter.login());
       if (path === "/logout") {
         await store.cancelAll();
-        await adapter.logout(); return json(response, { ok: true });
+        discoveryAdapter.close(); await adapter.logout(); return json(response, { ok: true });
       }
       if (path === "/latex/sample" || ["/templates/swe", "/templates/data", "/templates/cover-letter"].includes(path)) {
         if (compiling) return json(response, { error: "A sample is already compiling." }, 409);
@@ -137,7 +154,7 @@ async function start() {
 }
 async function shutdown() {
   if (closing) return;
-  closing = true; runner.stop(); server.close(); adapter.close();
+  closing = true; runner.stop(); server.close(); adapter.close(); discoveryAdapter.close();
   // Let cancellation record the interrupted state; the lease recovers a hard kill.
   const deadline = setTimeout(() => process.exit(1), 10_000);
   await activeTick?.catch(() => {});

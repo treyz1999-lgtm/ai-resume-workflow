@@ -123,3 +123,9 @@ describe("fetchPosting (E7-8)", () => {
     expect(error).toMatchObject({ code: "EPRIVATE" });
   });
 });
+
+it("preserves structured posting dates and requisitions for occurrence evidence", () => {
+ const result = postingFromHtml(jobPage({ ...posting, datePosted: "2026-11-01", identifier: { value: "EXAMPLE-123" } }));
+ expect(result?.text).toContain("Posted: 2026-11-01");
+ expect(result?.text).toContain("Requisition: EXAMPLE-123");
+});

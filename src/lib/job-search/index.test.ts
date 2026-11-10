@@ -76,12 +76,12 @@ describe("postingDetails", () => {
     expect(requests).toHaveLength(1);
   });
 
-  it("asks the source for the rest of an incomplete one, and keeps it", async () => {
+  it("does not upgrade a clipped JSearch description to a complete one", async () => {
     stubFetch(() => json(jsearchV2Page));
     const [posting] = (await searchPostings("JSEARCH", ninja, query)).postings;
     const partial = { ...posting, complete: false };
-    expect(await postingDetails("JSEARCH", ninja, partial)).toBe(posting.description);
-    expect(await postingDetails("JSEARCH", ninja, { ...partial, description: "" })).toBe(posting.description);
+    expect(await postingDetails("JSEARCH", ninja, partial)).toBeNull();
+    expect(await postingDetails("JSEARCH", ninja, { ...partial, description: "" })).toBeNull();
     expect(await postingDetails("JSEARCH", ninja, { ...partial, externalId: "other", description: "" })).toBeNull();
   });
 });
@@ -96,4 +96,11 @@ describe("testSource", () => {
     stubFetch(() => json({}, { status: 401 }));
     await expect(testSource("JSEARCH", ninja)).rejects.toMatchObject({ problem: "key" });
   });
+});
+
+it("a fresh discovery scan bypasses the interactive cache", async () => {
+ const requests = stubFetch(() => json(jsearchV2Page));
+ await searchPostings("JSEARCH", ninja, query);
+ await searchPostings("JSEARCH", ninja, query, null, { fresh: true });
+ expect(requests).toHaveLength(2);
 });

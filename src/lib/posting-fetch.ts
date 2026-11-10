@@ -272,7 +272,7 @@ function jobPostingIn(data: unknown): JobPosting | null {
 }
 
 const str = (value: unknown): string => (typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "");
-const nameOf = (value: unknown): string => str(value) || (value && typeof value === "object" ? str((value as Record<string, unknown>).name) : "");
+const nameOf = (value: unknown): string => str(value) || (value && typeof value === "object" ? str((value as Record<string, unknown>).name) || str((value as Record<string, unknown>).value) : "");
 
 /** A posting as a person would paste it: title and company, the facts, then the description. */
 function jobPostingText(posting: JobPosting): string {
@@ -292,6 +292,8 @@ function jobPostingText(posting: JobPosting): string {
     [posting.employmentType].flat().map(str).filter(Boolean).join(", ").toLowerCase().replaceAll("_", " "),
     salaryOf(posting.baseSalary),
     deadline && `Apply by ${deadline}`,
+    str(posting.datePosted) && `Posted: ${str(posting.datePosted)}`,
+    nameOf(posting.identifier) && `Requisition: ${nameOf(posting.identifier)}`,
   ].filter(Boolean);
   const description = htmlText(str(posting.description));
   return [[company, title].filter(Boolean).join(": "), facts.join(" · "), description].filter(Boolean).join("\n\n");

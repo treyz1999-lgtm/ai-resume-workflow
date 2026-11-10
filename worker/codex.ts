@@ -19,7 +19,8 @@ export class CodexAdapter implements ExecutionAdapter {
   private active = false;
   private abortActive?: () => void;
   constructor(private factory: (cwd: string) => RpcClient = startCodex,
-    private root = process.env.EXECUTION_ROOT ?? "/work", private turnTimeoutMs = 180_000) {}
+    private root = process.env.EXECUTION_ROOT ?? "/work", private turnTimeoutMs = 180_000,
+    private validateResult: (value: unknown) => unknown = value => diagnostic.parse(value)) {}
   private connect(): Promise<RpcClient> {
     if (this.ready) return this.ready;
     this.ready = (async () => {
@@ -122,7 +123,7 @@ export class CodexAdapter implements ExecutionAdapter {
         const final = turn.items?.filter(item => item.type === "agentMessage" && item.text).at(-1)?.text;
         const text = final || finalMessage || output;
         try {
-          const structured = diagnostic.parse(JSON.parse(text));
+          const structured = this.validateResult(JSON.parse(text));
           finish(undefined, { text, structured, threadId, turnId });
         } catch { finish(new ExecutionError("invalid-result")); }
       };

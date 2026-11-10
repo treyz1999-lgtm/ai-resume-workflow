@@ -50,7 +50,7 @@ export async function searchPostings<S extends JobSource>(
   if (!sourceCovers(source, query.country)) throw jobSearchError("country", source, { country: query.country });
   const adapter = adapterFor(source);
   const key = `search:${source}:${JSON.stringify(query)}:${next ?? ""}`;
-  const hit = cached<SearchPage>(key);
+  const hit = context.fresh ? undefined : cached<SearchPage>(key);
   if (hit) return hit;
   const page = await logged(() => adapter.search(query, credentials, next, context));
   remember(key, page);
@@ -66,7 +66,7 @@ export async function postingDetails<S extends JobSource>(
 ): Promise<string | null> {
   if (posting.complete) return posting.description;
   const key = `details:${postingKey(posting)}`;
-  const hit = cached<string>(key);
+  const hit = context.fresh ? undefined : cached<string>(key);
   if (hit) return hit;
   const text = await logged(() => adapterFor(source).details(posting, credentials, context));
   if (text) remember(key, text);
