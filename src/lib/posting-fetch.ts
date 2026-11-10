@@ -286,6 +286,9 @@ function jobPostingText(posting: JobPosting): string {
   });
   const remote = str(posting.jobLocationType) === "TELECOMMUTE" ? "Remote" : "";
   const deadline = str(posting.validThrough).slice(0, 10);
+  const requisition = typeof posting.identifier === "object" && posting.identifier
+    ? str((posting.identifier as Record<string, unknown>).value)
+    : str(posting.identifier);
   const facts = [
     [...new Set(locations.filter(Boolean))].join(" / "),
     remote,
@@ -293,7 +296,7 @@ function jobPostingText(posting: JobPosting): string {
     salaryOf(posting.baseSalary),
     deadline && `Apply by ${deadline}`,
     str(posting.datePosted) && `Posted: ${str(posting.datePosted)}`,
-    nameOf(posting.identifier) && `Requisition: ${nameOf(posting.identifier)}`,
+    requisition && `Requisition: ${requisition}`,
   ].filter(Boolean);
   const description = htmlText(str(posting.description));
   return [[company, title].filter(Boolean).join(": "), facts.join(" · "), description].filter(Boolean).join("\n\n");

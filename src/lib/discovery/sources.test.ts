@@ -9,9 +9,24 @@ vi.mock("@/lib/startups/sources/hn", () => ({ fetchHnStartups: mocks.hn }));
 import { collectDiscovery, dateEvidence, resolveIntake } from "./sources";
 import { DEFAULT_DISCOVERY_CONFIG } from "./contracts";
 import { DEFAULT_DISCOVERY_PREFERENCES } from "@/lib/knowledge-contracts";
+import { matchesPreferences } from "./preferences";
 const signal = () => new AbortController().signal;
 afterEach(() => vi.clearAllMocks());
 describe("discovery source intake", () => {
+  it("reads the posting date independently of an earlier deadline field", async () => {
+    const input = { jd: "Fictional role\nApply by 2026-12-01 · Posted: 2026-11-01 · Requisition: A-2", url: "", company: "", role: "" };
+    expect((await resolveIntake(input, signal())).postingEvidence.date).toBe("2026-11-01T00:00:00.000Z");
+  });
+  it("recognizes related titles and retains roles with unknown preference fields", () => {
+    const prefs = { ...DEFAULT_DISCOVERY_PREFERENCES, roles: ["Entry Level Software Engineer"], locations: ["Phoenix"], workArrangements: ["Remote"], minimumSalary: 80000, constraints: "Salary per year" };
+    const job = { company: "Example", role: "Backend Developer", location: "Remote", remote: true, salary: "" };
+    expect(matchesPreferences(job, prefs)).toBe(true);
+    expect(matchesPreferences({ ...job, role: "Marketing Manager" }, prefs)).toBe(false);
+    expect(matchesPreferences({ ...job, location: "Onsite Phoenix", remote: false }, prefs)).toBe(false);
+    expect(matchesPreferences({ ...job, location: "Remote, Boston" }, prefs)).toBe(false);
+    expect(matchesPreferences({ ...job, salary: "USD 60,000–70,000 a year" }, prefs)).toBe(false);
+    expect(matchesPreferences({ ...job, salary: "USD 40–50 an hour" }, prefs)).toBe(true);
+  });
   it("preserves raw relative-date evidence with uncertainty", () => {
     const result = dateEvidence("Reposted 2 days ago", new Date("2026-11-03T12:00:00Z"));
     expect(result).toMatchObject({ kind: "relative", reposted: true, earliest: "2026-10-31T12:00:00.000Z", latest: "2026-11-01T12:00:00.000Z", date: null });

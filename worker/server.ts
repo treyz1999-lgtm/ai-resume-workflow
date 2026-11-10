@@ -36,12 +36,15 @@ function authorized(request: IncomingMessage) {
   return typeof received === "string" && Buffer.byteLength(received) === Buffer.byteLength(token!) && timingSafeEqual(Buffer.from(received), Buffer.from(token!));
 }
 async function body(request: IncomingMessage, limit = 4096): Promise<unknown> {
-  let data = "";
+  const chunks: Buffer[] = [];
+  let bytes = 0;
   for await (const part of request) {
-    data += String(part);
-    if (Buffer.byteLength(data) > limit) throw new Error("invalid-request");
+    const chunk = Buffer.from(part);
+    bytes += chunk.byteLength;
+    if (bytes > limit) throw new Error("invalid-request");
+    chunks.push(chunk);
   }
-  return data ? JSON.parse(data) : {};
+  return bytes ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
 }
 const empty = z.object({}).strict();
 const server = createServer(async (request, response) => {

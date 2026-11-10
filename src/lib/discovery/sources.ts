@@ -2,6 +2,7 @@ import "server-only";
 import { ActionError } from "@/lib/action";
 import { createHash } from "node:crypto";
 import { fetchPosting } from "@/lib/posting-fetch";
+import { matchesPreferences } from "./preferences";
 import { searchPostings, postingDetails } from "@/lib/job-search";
 import { credentialsFor, loadJobSearchConfig, requestContext } from "@/lib/job-search/config";
 import { EMPTY_QUERY, postingText } from "@/lib/job-search/search";
@@ -25,7 +26,7 @@ export function dateEvidence(raw: string, observedAt = new Date(), absolute?: st
   return base;
 }
 function evidenceFromText(text: string): PostingEvidence {
-  const raw = text.match(/(?:^|\n)[^\n]*(?:reposted|posted|datePosted)[^\n]*/i)?.[0].trim() ?? "";
+  const raw = text.match(/\b(?:reposted|posted|datePosted)\b[^\n·|]*/i)?.[0].trim() ?? "";
   return dateEvidence(raw.slice(0, 2000));
 }
 export async function resolveIntake(input: IntakeInput, signal: AbortSignal): Promise<DiscoveryInput> {
@@ -48,7 +49,7 @@ async function fromStartup(startup: FoundStartup, signal: AbortSignal): Promise<
   const link = startup.links.find(item => /job|apply|posting/i.test(item.label))?.url || startup.links[0]?.url || hnItemLink(startup.externalId);
   if (!complete && link) {
     const fetched = await fetchPosting(link); signal.throwIfAborted();
-    if (fetched.ok) { jd = fetched.text; complete = true; }
+    if (fetched.ok && fetched.source === "structured") { jd = fetched.text; complete = true; }
   }
   return discoveryInputSchema.parse({ source: startup.source, externalId: startup.externalId, url: link, company: startup.company,
     role: startup.roles.join(" / "), jd, complete, postingEvidence: dateEvidence(startup.postedAt ?? "", new Date(), startup.postedAt) });
@@ -61,17 +62,25 @@ export async function collectDiscovery(config: DiscoveryConfig, preferences: Dis
     signal.throwIfAborted();
     if (source === "JSEARCH") {
       const jobConfig = await loadJobSearchConfig();
-      if (jobConfig.source !== "JSEARCH") throw new Error("Select JSearch and configure its key in Settings → Job search.");
-      if (!preferences.roles.length) throw new Error("Add desired roles in Knowledge base → Discovery preferences.");
+      if (jobConfig.source !== "JSEARCH") throw new ActionError("Select JSearch and configure its key in Settings → Job search.");
+      if (!preferences.roles.length) throw new ActionError("Add desired roles in Knowledge base → Discovery preferences.");
       const credentials = credentialsFor(jobConfig, "JSEARCH");
       const context = { ...requestContext("JSEARCH"), signal, fresh: true };
       const results: DiscoveryInput[] = [];
-      for (const role of preferences.roles) {
-        for (const place of preferences.locations.length ? preferences.locations : [""]) {
+      const roles = [...new Set(preferences.roles)];
+      const places = [...new Set(preferences.locations.length ? preferences.locations : [""])];
+      if (roles.length * places.length > 12) throw new ActionError("JSearch permits at most 12 role and location combinations per scan. Narrow your discovery preferences.");
+      const seen = new Set<string>();
+      for (const role of roles) {
+        for (const place of places) {
           signal.throwIfAborted();
           const page = await searchPostings("JSEARCH", credentials, { ...EMPTY_QUERY, keywords: role, place, country: config.country,
             remoteOnly: preferences.workArrangements.length === 1 && preferences.workArrangements[0].toLowerCase() === "remote", postedWithin: "month" }, null, context);
           for (const posting of page.postings) {
+            if (!matchesPreferences({ company: posting.company, role: posting.title, remote: posting.remote, location: posting.place, salary: posting.salary }, preferences)) continue;
+            const key = JSON.stringify([posting.externalId, posting.postedAt]);
+            if (seen.has(key)) continue;
+            seen.add(key);
             let description = posting.description; let complete = posting.complete;
             if (!complete) {
               try { const full = await postingDetails("JSEARCH", credentials, posting, context); if (full) { description = full; complete = true; } } catch { signal.throwIfAborted(); }
@@ -91,14 +100,18 @@ export async function collectDiscovery(config: DiscoveryConfig, preferences: Dis
     const startups = source === "YC" ? await fetchYcStartups(signal) : await fetchHnStartups(placeOf({ city: "", country: "" }), signal);
     // Each source owns its raw fetch; one source failing never hides the others.
     const result: DiscoveryInput[] = [];
-    for (const startup of startups) { signal.throwIfAborted(); result.push(await fromStartup(startup, signal)); }
+    for (const startup of startups) {
+      signal.throwIfAborted();
+      const salary = startup.details.split("\n").find(line => /salary|compensation/i.test(line)) ?? "";
+      if (!matchesPreferences({ company: startup.company, role: startup.roles.join(" / "), remote: startup.remote, location: startup.location, salary }, preferences)) continue;
+      result.push(await fromStartup(startup, signal));
+    }
     return result;
   }));
   signal.throwIfAborted();
-  const excluded = new Set(preferences.excludedCompanies.map(value => value.trim().toLowerCase()));
   return {
-    postings: outcomes.flatMap(result => result.status === "fulfilled" ? result.value.filter(item => !excluded.has(item.company.trim().toLowerCase())) : []),
+    postings: outcomes.flatMap(result => result.status === "fulfilled" ? result.value : []),
     sources: outcomes.map((result, index) => ({ source: sources[index], found: result.status === "fulfilled" ? result.value.length : 0,
-      error: result.status === "fulfilled" ? null : sources[index] === "JSEARCH" ? "JSearch failed. Check its source selection, credentials, country and discovery role preferences; retry the scan." : `${sources[index]} could not be reached or returned an invalid posting. Retry the scan.` })),
+      error: result.status === "fulfilled" ? null : result.reason instanceof ActionError ? result.reason.message : sources[index] === "JSEARCH" ? "JSearch failed. Check its source selection, credentials, country and discovery role preferences; retry the scan." : `${sources[index]} could not be reached or returned an invalid posting. Retry the scan.` })),
   };
 }

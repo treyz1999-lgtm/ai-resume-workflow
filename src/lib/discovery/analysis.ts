@@ -39,7 +39,7 @@ export async function analyzePosting(posting: DiscoveryInput, kb: unknown, confi
     const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     if (!response.ok) {
       const codes: Record<string, string> = { auth: "Sign in with ChatGPT in Connections before retrying discovery.", quota: "Codex usage limit reached. This posting is retained for retry.", cancelled: "Discovery analysis was cancelled.", "invalid-result": "The model returned an incomplete or invalid discovery analysis.", transport: "The execution worker disconnected or timed out. Retry discovery." };
-      throw new Error(codes[data.code] ?? "The execution worker could not analyze this posting. Check Connections and retry.");
+      throw new ActionError(codes[data.code] ?? "The execution worker could not analyze this posting. Check Connections and retry.");
     }
     result = data;
   }
