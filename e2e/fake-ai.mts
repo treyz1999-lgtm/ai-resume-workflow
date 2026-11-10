@@ -34,6 +34,18 @@ let emails = 0;
 let last: Message[] = [];
 
 const answers: Record<string, (messages: Message[]) => unknown> = {
+  discovery_analysis: () => ({
+    extracted: {
+      company: "Aurora Labs", role: "Data Engineer", track: "data", location: "Remote, US", arrangement: "Remote",
+      salaryOriginal: "$90,000–$110,000 USD per year", salaryMin: 90000, salaryMax: 110000, salaryCurrency: "USD", salaryPeriod: "year",
+      experienceOriginal: "0–2 years of experience", experienceBand: "0-2", requisition: "AUR-101", postingDateOriginal: null,
+    },
+    requirements: [
+      { text: "SQL", jdQuote: "SQL is required.", importance: "core", evidence: "direct", kbQuotes: ["Built SQL reports for fictional data."], explanation: "The project demonstrates SQL." },
+      { text: "Python", jdQuote: "Python is preferred.", importance: "preference", evidence: "absent", kbQuotes: [], explanation: "No Python evidence in the supplied KB." },
+    ],
+    keywords: [{ keyword: "SQL", covered: true }, { keyword: "Python", covered: false }],
+  }),
   extracted_posting: () => ({
     title: "Senior Product Designer, Payments · Ledgerly",
     company: "Ledgerly",

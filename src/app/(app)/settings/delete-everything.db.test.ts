@@ -59,6 +59,13 @@ afterAll(async () => {
 
 describe("deleteEverything (E10-8)", () => {
   it("wipes all user data and the backups, keeps the built-in themes, and lands on the dashboard", async () => {
+    await prisma().discoveryControl.create({ data: { config: {} } });
+    await prisma().discoveryScan.create({ data: { status: "COMPLETED", input: { jd: "Fictional role" } } });
+    const discovered = await prisma().discoveryPosting.create({ data: {
+      identityKey: "fictional", occurrenceKey: "fictional:1", source: "TEXT", externalId: "fixture",
+      jd: "Fictional role", postingEvidence: {},
+    } });
+    await prisma().tailoringSelection.create({ data: { postingId: discovered.id } });
     // A saved posting from Find jobs goes too (E14-9).
     await prisma().posting.create({ data: { source: "JSEARCH", externalId: "job-1", savedAt: new Date() } });
     await prisma().postingSearch.create({ data: { source: "JSEARCH", query: {}, postings: [] } });
@@ -73,6 +80,7 @@ describe("deleteEverything (E10-8)", () => {
     await prisma().setting.create({ data: { key: "connectorEnabledAt", value: "2026-10-23T09:00:00.000Z" } });
     await expect(deleteEverything({ confirm: "DELETE" })).rejects.toThrow("NEXT_REDIRECT");
     expect(redirected.to).toBe("/");
+    expect(await Promise.all([prisma().discoveryControl.count(), prisma().discoveryScan.count(), prisma().discoveryPosting.count(), prisma().tailoringSelection.count()])).toEqual([0, 0, 0, 0]);
     const counts = await Promise.all([
       prisma().posting.count(),
       prisma().postingSearch.count(),

@@ -18,6 +18,7 @@ Coordinator owns Prisma and this contract. New tables isolate discovery from leg
 - `saveDiscoveryConfig(config: DiscoveryConfig): Promise<void>`
 - `startDiscoverySession(hours: 1|2|3): Promise<void>`; `stopDiscoverySession(): Promise<void>`
 - `requestDiscoveryScan(): Promise<void>` (queue a manual scan, reuse active)
+- `retryDiscoveryScan(id: string): Promise<void>` (explicit retry of a failed/interrupted scan with persisted input, config, full KB snapshot and checkpoint)
 - `intakePosting(input: IntakeInput): Promise<void>` (URL or full pasted JD; durable processing with honest errors)
 - `setDiscoveryState(ids: string[], state: PostingState): Promise<void>`
 - `selectForTailoring(ids: string[]): Promise<void>`; `removeTailoringSelection(id: string): Promise<void>`

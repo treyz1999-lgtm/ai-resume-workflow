@@ -45,6 +45,7 @@ const SCREENS = [
   "/jobs?view=dismissed",
   "/startups",
   "/agent",
+  "/discovery",
   "/inbox",
   // The dashboard's calendar on another month.
   "/?date=2026-11-01",
