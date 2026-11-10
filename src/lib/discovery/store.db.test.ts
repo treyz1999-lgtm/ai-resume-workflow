@@ -116,3 +116,12 @@ it("persists validated settings and quick sessions without enabling weekly sched
   expect(view.sessionUntil).toBeNull();
   await expect(saveDiscoveryConfig({ ...DEFAULT_DISCOVERY_CONFIG, intervalMinutes: 0 })).rejects.toThrow();
 });
+it("only shows upcoming ticks within a currently active session or window", async () => {
+  const nextTickAt = new Date(now.getTime() + 60_000);
+  await prisma().discoveryControl.create({ data: { config: json(DEFAULT_DISCOVERY_CONFIG), nextTickAt, sessionUntil: now } });
+  expect(await loadDiscovery(now)).toMatchObject({ sessionUntil: null, nextTickAt: null });
+  await prisma().discoveryControl.update({ where: { id: "discovery" }, data: { sessionUntil: new Date(now.getTime() + 30_000) } });
+  expect((await loadDiscovery(now)).nextTickAt).toBeNull();
+  await prisma().discoveryControl.update({ where: { id: "discovery" }, data: { sessionUntil: new Date(now.getTime() + 120_000) } });
+  expect((await loadDiscovery(now)).nextTickAt).toBe(nextTickAt.toISOString());
+});

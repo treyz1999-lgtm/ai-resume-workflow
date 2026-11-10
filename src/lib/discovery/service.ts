@@ -7,18 +7,26 @@ import {
   type CoverageReport, type DiscoveryAnalysis, type DiscoveryConfig, type DiscoveryView, type IntakeInput, type PostingState, type SourceResult,
 } from "./contracts";
 import { configFrom, enqueueScan, ensureControl, json, retryScan, scanLock } from "./store";
+import { discoveryAllowed } from "./timing";
 
 const idsSchema = z.array(z.string().min(1).max(200)).min(1).max(100);
 
-export async function loadDiscovery(): Promise<DiscoveryView> {
+export async function loadDiscovery(now = new Date()): Promise<DiscoveryView> {
   const [control, scans, postings, selections] = await Promise.all([
     prisma.discoveryControl.findUnique({ where: { id: "discovery" } }),
-    prisma.discoveryScan.findMany({ orderBy: { createdAt: "desc" }, take: 30 }),
+    prisma.discoveryScan.findMany({ orderBy: { createdAt: "desc" }, take: 30, select: {
+      id: true, status: true, stage: true, sourceResults: true, error: true, createdAt: true, finishedAt: true,
+    } }),
     prisma.discoveryPosting.findMany({ orderBy: { lastSeenAt: "desc" }, include: { selection: { select: { id: true } } } }),
     prisma.tailoringSelection.findMany({ orderBy: { createdAt: "asc" }, include: { posting: { select: { company: true, role: true } } } }),
   ]);
+  const config = configFrom(control?.config);
+  const sessionUntil = control?.sessionUntil && control.sessionUntil > now ? control.sessionUntil : null;
+  const nextTick = control?.nextTickAt;
+  const nextTickAt = nextTick && nextTick > now && discoveryAllowed(config, sessionUntil, now)
+    && discoveryAllowed(config, sessionUntil, nextTick) ? nextTick.toISOString() : null;
   return {
-    config: configFrom(control?.config), configured: Boolean(control), sessionUntil: control?.sessionUntil?.toISOString() ?? null, nextTickAt: control?.nextTickAt?.toISOString() ?? null,
+    config, configured: Boolean(control), sessionUntil: sessionUntil?.toISOString() ?? null, nextTickAt,
     scans: scans.map(row => ({ id: row.id, status: row.status, stage: row.stage, sourceResults: (row.sourceResults ?? []) as SourceResult[], error: row.error, createdAt: row.createdAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null })),
     postings: postings.map(row => ({ id: row.id, source: row.source, url: row.url, company: row.company, role: row.role, jd: row.jd, complete: row.complete,
       postingEvidence: postingEvidenceSchema.parse(row.postingEvidence), postedAt: row.postedAt?.toISOString() ?? null, firstSeenAt: row.firstSeenAt.toISOString(), lastSeenAt: row.lastSeenAt.toISOString(), sightings: row.sightings,
