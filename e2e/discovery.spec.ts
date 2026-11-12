@@ -18,6 +18,11 @@ test("a pasted role can be reviewed, saved and explicitly selected for tailoring
   await expect(page.getByText("67%", { exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("50%", { exact: true })).toBeVisible();
   await expect(page.getByText("No roles selected yet.")).toBeVisible();
+  if (process.env.M3_REVIEW_ARTIFACTS === "1") {
+    const score = page.getByText("67%", { exact: true });
+    await score.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: "runtime/m3/discovery-result.png" });
+  }
   await page.getByRole("button", { name: "Save role" }).click();
   await page.getByLabel("Show roles").selectOption("SAVED");
   await page.getByRole("button", { name: "Select for tailoring", exact: true }).click();

@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 in progress; M4–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 ready for review; M4–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -69,12 +69,12 @@ Gate: edits update KB without changing history; fictional SWE/Data compile; them
 
 Owners: workflow/product.
 
-- [ ] Public provider searches, startup discovery, pasted URLs/JDs. Retain upstream sources; isolate failures and expose supported source credentials. Additional browser boards are later adapters.
-- [ ] Extract company, role, track, location, arrangement, salary/currency/period, original experience wording/band, requisition, source, posting dates. Preserve unknown values and original text.
-- [ ] Selected-day/time windows; 1–60 minute interval; 1/2/3-hour sessions. System/browser timezone default with override; ten-minute default; initially off.
-- [ ] One scan at a time; skip missed ticks after downtime. Stop starting scans at session expiry.
-- [ ] Distinguish sightings from repost occurrences; preserve relative-date evidence to prevent daily-label drift creating reposts.
-- [ ] KB coverage score, strengths/gaps, saved/dismissed state, single/bulk tailoring selection; remove automatic drafts.
+- [x] Public provider searches, startup discovery, pasted URLs/JDs. Retain upstream sources; isolate failures and expose supported source credentials. Additional browser boards are later adapters.
+- [x] Extract company, role, track, location, arrangement, salary/currency/period, original experience wording/band, requisition, source, posting dates. Preserve unknown values and original text.
+- [x] Selected-day/time windows; 1–60 minute interval; 1/2/3-hour sessions. System/browser timezone default with override; ten-minute default; initially off.
+- [x] One scan at a time; skip missed ticks after downtime. Stop starting scans at session expiry.
+- [x] Distinguish sightings from repost occurrences; preserve relative-date evidence to prevent daily-label drift creating reposts.
+- [x] KB coverage score, strengths/gaps, saved/dismissed state, single/bulk tailoring selection; remove automatic drafts.
 
 Gate: no automatic tailoring, expiry respected, unchanged sightings deduplicate while evidenced reposts reappear, and source failures remain isolated.
 

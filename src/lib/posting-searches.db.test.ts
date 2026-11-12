@@ -206,14 +206,15 @@ describe("listSearches and removeSearch", () => {
 });
 
 describe("fullText", () => {
-  it("returns a complete posting's own text, and asks the posting's own source for the rest", async () => {
+  it("returns complete JSearch text and leaves a clipped description incomplete", async () => {
     await useJSearch();
     stubFetch(() => json(jsearchV2Page));
     const run = await runSearch(query);
     const { state, ...posting } = (await loadSearch(run.ok ? run.id : ""))!.postings[0];
     void state;
     expect(await fullText(posting)).toBe(posting.description);
-    expect(await fullText({ ...posting, complete: false })).toBe(posting.description);
+    // JSearch has no detail endpoint to recover the missing part.
+    expect(await fullText({ ...posting, complete: false })).toBeNull();
   });
 
   it("gives up quietly without the source's key", async () => {
