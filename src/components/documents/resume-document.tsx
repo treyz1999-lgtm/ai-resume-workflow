@@ -43,9 +43,18 @@ const sampleText = (content: ResumeContent) =>
  * `renderUnit` with its unit id, for editing it in place (E8-3).
  */
 export function ResumeDocument({ theme, profile, paper, layout, language, renderUnit = plainUnit, ...options }: ResumeDocumentProps) {
-  const resolved = resolveTheme(theme, layout);
   const labels = documentLabels(language);
   const content = resumeContent(profile, options, labels);
+  return <PreparedResumeDocument {...{ theme, paper, layout, language, renderUnit, content }} />;
+}
+
+/** Render a fixed revision using the same typography, layout and print markup as the base resume. */
+export function PreparedResumeDocument({ theme, paper, layout, language, renderUnit = plainUnit, content, links = {} }: Pick<ResumeDocumentProps, "theme" | "paper" | "layout" | "language" | "renderUnit"> & {
+  content: ResumeContent; links?: Record<string, string>;
+}) {
+  const resolved = resolveTheme(theme, layout);
+  const labels = documentLabels(language);
+  const contact = (text: string) => links[text] ? <a href={links[text]}><Contact>{text}</Contact></a> : <Contact>{text}</Contact>;
   const { lang, dir } = documentLanguage(language, sampleText(content));
   const { shape, position } = resolved.photo;
   const photo = (size: "header" | "sidebar", className?: string) =>
@@ -58,7 +67,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
         <ul className={styles.contactList}>
           {content.contacts.map((item, index) => (
             <li key={index}>
-              <Contact>{item}</Contact>
+              {contact(item)}
             </li>
           ))}
         </ul>
@@ -122,7 +131,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
               head: (
                 <EntryHead
                   title={project.name}
-                  at={project.link && <Contact>{project.link}</Contact>}
+                  at={project.link && contact(project.link)}
                   dates={project.dates}
                   timeline={resolved.timeline}
                 />
@@ -224,7 +233,7 @@ export function ResumeDocument({ theme, profile, paper, layout, language, render
     <>
       <h1 className={styles.name}>{content.name}</h1>
       {content.headline && <p className={styles.headline}>{content.headline}</p>}
-      {!resolved.split && content.contacts.length > 0 && <ContactLine items={content.contacts} />}
+      {!resolved.split && content.contacts.length > 0 && (Object.keys(links).length ? <p className={styles.contactLine}>{content.contacts.map((item, i) => <Fragment key={i}>{i > 0 && "  ·  "}{contact(item)}</Fragment>)}</p> : <ContactLine items={content.contacts} />)}
     </>
   );
   // A photo beside the name puts the name, headline and contacts in a block of their own.
