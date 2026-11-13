@@ -51,8 +51,9 @@ async function capture(tx: Db) {
 }
 
 /** Captures complete validated profile knowledge, never application facts or uploads. */
-export async function captureKnowledgeSnapshot() {
-  return prisma.$transaction(async tx => { await lockSources(tx); return capture(tx); }, { timeout: 20_000 });
+export async function captureKnowledgeSnapshot(tx?: Db) {
+  if (tx) { await lockSources(tx); return capture(tx); }
+  return prisma.$transaction(async transaction => { await lockSources(transaction); return capture(transaction); }, { timeout: 20_000 });
 }
 
 export async function saveKnowledgeDetail(input: KnowledgeDetailInput) {

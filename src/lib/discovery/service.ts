@@ -18,7 +18,7 @@ export async function loadDiscovery(now = new Date()): Promise<DiscoveryView> {
       id: true, status: true, stage: true, sourceResults: true, error: true, createdAt: true, finishedAt: true,
     } }),
     prisma.discoveryPosting.findMany({ orderBy: { lastSeenAt: "desc" }, include: { selection: { select: { id: true } } } }),
-    prisma.tailoringSelection.findMany({ orderBy: { createdAt: "asc" }, include: { posting: { select: { company: true, role: true } } } }),
+    prisma.tailoringSelection.findMany({ where: { status: "QUEUED" }, orderBy: { position: "asc" }, select: { id: true, postingId: true, createdAt: true, posting: { select: { company: true, role: true } } } }),
   ]);
   const config = configFrom(control?.config);
   const sessionUntil = control?.sessionUntil && control.sessionUntil > now ? control.sessionUntil : null;
@@ -66,7 +66,7 @@ export async function setDiscoveryState(ids: string[], input: PostingState): Pro
   await prisma.$transaction(async tx => {
     await scanLock(tx);
     await tx.discoveryPosting.updateMany({ where: { id: { in: selected } }, data: { state } });
-    if (state === "DISMISSED") await tx.tailoringSelection.deleteMany({ where: { postingId: { in: selected } } });
+    if (state === "DISMISSED") await tx.tailoringSelection.deleteMany({ where: { postingId: { in: selected }, status: "QUEUED" } });
   });
 }
 export async function selectForTailoring(ids: string[]): Promise<void> {
@@ -81,5 +81,5 @@ export async function selectForTailoring(ids: string[]): Promise<void> {
   });
 }
 export async function removeTailoringSelection(id: string): Promise<void> {
-  await prisma.tailoringSelection.deleteMany({ where: { id: z.string().min(1).max(200).parse(id) } });
+  await prisma.tailoringSelection.deleteMany({ where: { id: z.string().min(1).max(200).parse(id), status: "QUEUED" } });
 }

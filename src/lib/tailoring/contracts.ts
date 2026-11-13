@@ -9,6 +9,7 @@ export type FrozenInput = {
 };
 export type SelectionPlan = { reviewed: { id: string; reason: string }[]; selected: string[]; rationale: string };
 export type TailoredContent = {
+  compositionReason?: string;
   track: V5Track; resume: V5ResumeInput; letter: CoverLetterInput | null;
   evidence: { text: string; quote: string; sourceId: string }[];
 };

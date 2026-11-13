@@ -25,6 +25,8 @@ export async function register() {
     // Discovery is independent of tailoring, with durable interval/window claims.
     const { startDiscoverySchedule } = await import("@/lib/discovery/scheduler");
     startDiscoverySchedule();
+    const { startTailoringQueue } = await import("@/lib/tailoring/runner");
+    startTailoringQueue();
 
     // Startup sources participate in the same discovery schedule. The legacy
     // daily startup timer would bypass the user's selected windows and sessions.
