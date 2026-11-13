@@ -31,6 +31,29 @@ async function seedPortfolio() {
 }
 
 test.beforeEach(async () => { await resetData(); await seedPortfolio(); });
+test("an undersized portfolio stops before planning and can be retried after updating the KB", async ({ page }) => {
+  test.setTimeout(150_000);
+  await sql('DELETE FROM "Project" WHERE id IN ($1,$2)', projectIds.slice(-2));
+  await sql(`INSERT INTO "DiscoveryPosting" (id,"identityKey","occurrenceKey",source,"externalId",company,role,jd,complete,"postingEvidence",coverage)
+    VALUES ('blocked-role','blocked','blocked:1','TEXT','blocked','Example Systems','Engineer',$1,true,$2,$3)`,
+    [jd, JSON.stringify(proof), JSON.stringify(coverage)]);
+  await page.goto("/discovery");
+  await page.getByRole("button", { name: "Select for tailoring", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Role added" })).toBeVisible();
+  await page.goto("/tailoring");
+  await expect(page.getByText(/preparation needs five projects/i)).toBeVisible({ timeout: 30_000 });
+  const [blocked] = await sql<{ id: string; kbSnapshotId: string; plan: unknown }>('SELECT id,"kbSnapshotId",plan FROM "TailoringSelection"');
+  expect(blocked.plan).toBeNull();
+  expect(await sql('SELECT id FROM "TailoringRevision"')).toEqual([]);
+  await sql('INSERT INTO "Project" (id,name,link,bullets,"updatedAt") VALUES ($1,$2,$3,$4,now())',
+    [projectIds[4], "Ember", "https://example.com/ember", "Built SQL reports for Ember.\nTested Ember against fixtures.\nDocumented Ember results."]);
+  await page.getByRole("button", { name: "Retry preparation" }).click();
+  await expect(page.getByRole("heading", { name: "Pending submission (1)" })).toBeVisible({ timeout: 100_000 });
+  const [ready] = await sql<{ id: string; kbSnapshotId: string; plan: { selected: string[] } }>('SELECT id,"kbSnapshotId",plan FROM "TailoringSelection"');
+  expect(ready.id).toBe(blocked.id);
+  expect(ready.kbSnapshotId).not.toBe(blocked.kbSnapshotId);
+  expect(new Set(ready.plan.selected).size).toBe(5);
+});
 for (const variant of [
   { track: "swe", letter: false, themed: false },
   { track: "data", letter: true, themed: false },
