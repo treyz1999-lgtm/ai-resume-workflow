@@ -77,6 +77,43 @@ model TailoringSelection {
   postingId String @unique
   posting DiscoveryPosting @relation(fields: [postingId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  position Int @unique @default(autoincrement())
+  status String @default("QUEUED")
+  stage String @default("Waiting")
+  owner String?
+  leaseUntil DateTime?
+  cancelRequested Boolean @default(false)
+  error String?
+  kbSnapshotId String?
+  frozen Json?
+  plan Json?
+  content Json?
+  themeSnapshot Json?
+  score Int?
+  matchReport Json?
+  revisions TailoringRevision[]
+}
+
+model TailoringControl {
+  id String @id @default("queue")
+  paused Boolean @default(false)
+}
+
+model TailoringRevision {
+  id String @id @default(cuid())
+  runId String
+  run TailoringSelection @relation(fields: [runId], references: [id], onDelete: Cascade)
+  kind String
+  format String
+  source String
+  pdf Bytes
+  preview Bytes
+  text String
+  verification Json
+  evidence Json
+  matchReport Json?
+  createdAt DateTime @default(now())
+  @@unique([runId,kind])
 }
 
 model ExecutionRun {
