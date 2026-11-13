@@ -6,6 +6,15 @@
 import { createServer } from "node:http";
 
 type Message = { role: string; content: string };
+function tailoringInput(messages: Message[]) {
+  const prompt = messages.find(message => message.role === "user")!.content;
+  type Entry = { id:string; bullets:string };
+  return JSON.parse(prompt.slice(prompt.indexOf("\n\n{") + 2)) as {
+    kb: { projects:Entry[]; experience:Entry[]; details:{kind:string;entryId:string;includeSwe:boolean;includeData:boolean}[] };
+    eligible:string[]; jd:string; options:{track:string;coverLetter:boolean}; plan:{selected:string[]};
+    content:{evidence:{text:string;quote:string;sourceId:string}[]};
+  };
+}
 type Request = { messages: Message[]; response_format?: { json_schema?: { name?: string } } };
 
 const port = Number(process.env.FAKE_AI_PORT ?? 3999);
@@ -34,6 +43,33 @@ let emails = 0;
 let last: Message[] = [];
 
 const answers: Record<string, (messages: Message[]) => unknown> = {
+  tailoring_plan: messages => {
+    const { kb, eligible } = tailoringInput(messages);
+    return { reviewed: kb.projects.map(p => ({ id: p.id, reason: "Reviewed the validated project evidence." })),
+      selected: eligible.slice(0, 5), rationale: "Selected five projects with demonstrated evidence and verified links." };
+  },
+  tailoring_edit: messages => {
+    const { kb, plan, options, jd } = tailoringInput(messages);
+    const track = options.track === "auto" ? (/analyst/i.test(jd) ? "data" : "swe") : options.track;
+    const selected = plan.selected.slice(0,track === "data" ? 2 : 4);
+    const rows = selected.map(id => kb.projects.find(p => p.id === id)!);
+    const bullets = (source: string, max: number) => source.split("\n").filter(Boolean).slice(0,max).map(text => ({ text, quote:text }));
+    const roles = kb.experience.filter(r => kb.details.find(d => d.kind === "experience" && d.entryId === r.id)?.[track === "swe" ? "includeSwe" : "includeData"] ?? true);
+    const first = rows[0];
+    return { track, compositionReason: "The selected projects fit the chosen track and page budget.", skills: [],
+      projects: rows.map(p => ({ id:p.id, stack:[], bullets:bullets(p.bullets,3) })),
+      experience: roles.map(r => ({ id:r.id, bullets:bullets(r.bullets,track === "data" ? 2 : 3) })),
+      letter: options.coverLetter ? [{ sourceId:first.id, ...bullets(first.bullets,1)[0] }] : [] };
+  },
+  tailoring_review: messages => {
+    const { content, jd } = tailoringInput(messages);
+    const first = content.evidence[0];
+    const term = "SQL";
+    const present = first?.text.includes(term) && jd.includes(term);
+    return { problems: [], requirements: [{ jdQuote: jd.split("\n")[0], importance: "core", alignment: present ? "direct" : "absent",
+      pdfQuote: present ? first.text : "", kbQuote: present ? first.quote : "", sourceId: present ? first.sourceId : "", explanation: "Evaluated the stated requirement against the fixture." }],
+      keywords: jd.includes(term) ? [term] : [] };
+  },
   discovery_analysis: () => ({
     extracted: {
       company: "Aurora Labs", role: "Data Engineer", track: "data", location: "Remote, US", arrangement: "Remote",
