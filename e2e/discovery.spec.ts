@@ -7,6 +7,9 @@ test("a pasted role can be reviewed, saved and explicitly selected for tailoring
   await sql(`INSERT INTO "Project" (id,name,bullets,"updatedAt") VALUES ('discovery-fixture','Aurora reports','Built SQL reports for fictional data.',now())`);
   const counts = () => sql<{ applications: number; documents: number }>(`SELECT (SELECT count(*)::int FROM "Application") AS applications, (SELECT count(*)::int FROM "Document") AS documents`);
   const before = await counts();
+  await page.goto("/tailoring");
+  await page.getByRole("button", { name: "Pause queue" }).click();
+  await expect(page.getByRole("button", { name: "Resume queue" })).toBeVisible();
   await page.goto("/discovery");
   await page.getByLabel("Discovery model connection").selectOption("configured");
   await page.getByRole("button", { name: "Save discovery settings" }).click();

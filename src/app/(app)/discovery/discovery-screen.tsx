@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ export function DiscoveryScreen({ view }: { view: DiscoveryView }) {
           onState={state => run(() => changeState({ ids: [posting.id], state }), "Role updated.")}
           onSelect={() => run(() => selectPostings({ ids: [posting.id] }), "Role added to the tailoring selection list.")} />)}
       </section>
-      <Card className="flex flex-col gap-4"><h2 className="text-xl font-medium">Selected for tailoring</h2><p className="text-sm text-muted">These roles are saved for the tailoring queue. Tailoring execution arrives in M4; selecting a role does not create a resume or submit an application.</p>
+      <Card className="flex flex-col gap-4"><h2 className="text-xl font-medium">Selected for tailoring</h2><p className="text-sm text-muted">Visit the <Link className="underline" href="/tailoring">tailoring queue</Link> to reorder waiting roles, follow progress and download verified documents.</p>
         {!view.selections.length ? <p>No roles selected yet.</p> : <ul className="flex flex-col gap-3">{view.selections.map(selection => <li key={selection.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3"><div><p className="font-medium">{selection.role || "Unknown role"} · {selection.company || "Unknown company"}</p><p className="text-sm text-muted">Selected {displayTime(selection.createdAt)}</p></div><Button variant="text" disabled={busy} onClick={() => run(() => removeSelection({ id: selection.id }), "Role removed from the tailoring selection list.")}>Remove {selection.role || "role"}</Button></li>)}</ul>}
       </Card>
       <Card className="flex flex-col gap-4"><h2 className="text-xl font-medium">Scan history</h2>{!view.scans.length && <p>No scans yet.</p>}{view.scans.map(scan => <details key={scan.id} className="border-t border-line pt-3"><summary className="cursor-pointer">{scan.status.toLowerCase()} · {displayTime(scan.createdAt)}{scan.stage ? ` · ${scan.stage}` : ""}</summary><div className="mt-3 flex flex-col gap-2 text-sm">{scan.error && <p className="text-danger">{scan.error}</p>}{scan.sourceResults.map((source, index) => <p key={index}>{source.source}: {source.error || `${source.found} postings found`}</p>)}{scan.finishedAt && <p>Finished {displayTime(scan.finishedAt)}</p>}{["FAILED", "INTERRUPTED"].includes(scan.status) && <div><Button variant="secondary" disabled={busy || running} onClick={() => run(() => retryScan({ id: scan.id }), "Scan queued for retry.")}>Retry scan</Button></div>}</div></details>)}</Card>

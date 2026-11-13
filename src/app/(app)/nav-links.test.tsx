@@ -33,6 +33,7 @@ describe("NavLinks", () => {
       "Find jobs",
       "Startups",
       "Discovery",
+      "Tailoring queue",
       "Applications",
       "Inbox",
       "Settings",
@@ -46,6 +47,7 @@ describe("NavLinks", () => {
     expect(currentItem("/jobs")).toEqual(["Find jobs"]);
     expect(currentItem("/startups")).toEqual(["Startups"]);
     expect(currentItem("/discovery")).toEqual(["Discovery"]);
+    expect(currentItem("/tailoring")).toEqual(["Tailoring queue"]);
     expect(currentItem("/settings")).toEqual(["Settings"]);
   });
 

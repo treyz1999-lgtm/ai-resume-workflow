@@ -113,7 +113,7 @@ it("clears bulk selection when changing the visible state", async () => {
 
 it("shows waiting selections honestly and removes them without running tailoring", async () => {
   render(<DiscoveryScreen view={view({ selections: [{ id: "selection-1", postingId: "role-1", role: "Software Engineer", company: "Fictional Systems", createdAt: now }] })} />);
-  expect(screen.getByText(/Tailoring execution arrives in M4/)).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "tailoring queue" })).toHaveAttribute("href", "/tailoring");
   await userEvent.click(screen.getByRole("button", { name: "Remove Software Engineer" }));
   expect(mocks.removeSelection).toHaveBeenCalledWith({ id: "selection-1" });
 });
