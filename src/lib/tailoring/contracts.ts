@@ -6,6 +6,7 @@ export type FrozenInput = {
   kb: unknown; jd: string; company: string; role: string; preparedAt: string;
   options: { track: "auto" | V5Track; themeId: string | null; coverLetter: boolean };
   provider: "codex" | "configured"; model: string;
+  revisionFeedback?: string;
 };
 export type SelectionPlan = { reviewed: { id: string; reason: string }[]; selected: string[]; rationale: string };
 export type TailoredContent = {

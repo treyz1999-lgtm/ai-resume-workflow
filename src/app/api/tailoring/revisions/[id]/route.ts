@@ -4,7 +4,7 @@ import { route } from "@/lib/route";
 export const GET = route<{ params: Promise<{ id: string }> }>(async (request, { params }) => {
   const { id } = await params;
   const file = request.nextUrl.searchParams.get("file") ?? "pdf";
-  const where = { id, run: { status: "PENDING" } };
+  const where = { id, run: { status: "PENDING" }, matchReport: { path: ["verified"], equals: true } };
   const missing = () => new Response(null, { status: 404 });
   function download(body: BodyInit, mime: string, name: string) {
     return new Response(body, { headers: {

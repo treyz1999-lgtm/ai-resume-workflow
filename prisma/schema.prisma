@@ -91,6 +91,8 @@ model TailoringSelection {
   themeSnapshot Json?
   score Int?
   matchReport Json?
+  generation Int @default(1)
+  history Json?
   revisions TailoringRevision[]
 }
 
@@ -103,6 +105,7 @@ model TailoringRevision {
   id String @id @default(cuid())
   runId String
   run TailoringSelection @relation(fields: [runId], references: [id], onDelete: Cascade)
+  generation Int @default(1)
   kind String
   format String
   source String
@@ -113,7 +116,7 @@ model TailoringRevision {
   evidence Json
   matchReport Json?
   createdAt DateTime @default(now())
-  @@unique([runId,kind])
+  @@unique([runId,kind,generation])
 }
 
 model ExecutionRun {

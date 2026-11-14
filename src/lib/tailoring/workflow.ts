@@ -39,7 +39,7 @@ export async function planProjects(input:FrozenInput,signal:AbortSignal):Promise
 }
 export async function editResume(input:FrozenInput,plan:SelectionPlan,signal:AbortSignal):Promise<TailoredContent>{
   checkPlan(input,plan);
-  return buildContent(input,plan,await execute("edit",input,{kb:input.kb,jd:input.jd,company:input.company,role:input.role,options:input.options,plan},signal));
+  return buildContent(input,plan,await execute("edit",input,{kb:input.kb,jd:input.jd,company:input.company,role:input.role,options:input.options,plan,revisionFeedback:input.revisionFeedback},signal));
 }
 export function assessReview(input:FrozenInput, content:TailoredContent, documents:RenderedDocument[], value:unknown):ReviewResult{
   const result=reviewSchema.parse(value);

@@ -21,7 +21,7 @@ it("requires a session before reading revision bytes", async () => {
 it.each(["pdf", "preview", "source", "verification", "report"])("requires current readiness before delivering %s", async file => {
   db.findFirst.mockResolvedValue(null);
   expect((await read(file)).status).toBe(404);
-  expect(db.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "test", run: { status: "PENDING" } } }));
+  expect(db.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "test", run: { status: "PENDING" }, matchReport: { path: ["verified"], equals: true } } }));
 });
 it("delivers exact original PDF bytes with a private download header", async () => {
   const bytes = Uint8Array.from([37, 80, 68, 70, 0, 255]);

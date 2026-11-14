@@ -39,6 +39,7 @@ export function appEnv(): Record<string, string> {
     DATABASE_URL: e2eDatabaseUrl(),
     DOSSIER_PASSWORD: PASSWORD_HASH,
     DOSSIER_SECRET: "e2e-secret-e2e-secret-e2e-secret-e2e",
+    WORKER_URL: process.env.E2E_WORKER_URL ?? "http://127.0.0.1:4310",
     DOSSIER_DATA_DIR: "/tmp/dossier-e2e",
     DOSSIER_AI_PROVIDER: "openai",
     DOSSIER_AI_URL: `http://localhost:${FAKE_AI_PORT}/v1`,

@@ -25,6 +25,8 @@ export async function executeTailoring(run: TailoringSelection) {
   try {
     const snapshot = await prisma.knowledgeSnapshot.findUniqueOrThrow({ where: { id: run.kbSnapshotId! } });
     const input: FrozenInput = { ...(run.frozen as unknown as Omit<FrozenInput, "kb">), kb: snapshot.payload };
+    const previous = Array.isArray(run.history) ? run.history.at(-1) : null;
+    if (previous && typeof previous === "object" && "reason" in previous && typeof previous.reason === "string") input.revisionFeedback = previous.reason;
     let plan = run.plan as unknown as SelectionPlan | null;
     if (!plan) {
       await save({ stage: "Comparing all projects" });
@@ -48,7 +50,7 @@ export async function executeTailoring(run: TailoringSelection) {
       content = await editResume(input, plan, signal.signal);
       await save({ content: asJson(content) });
     }
-    const revisions = await prisma.tailoringRevision.findMany({ where: { runId: run.id } });
+    const revisions = await prisma.tailoringRevision.findMany({ where: { runId: run.id, generation: run.generation } });
     let documents: RenderedDocument[] = revisions.map(doc => ({ ...doc, kind: doc.kind as RenderedDocument["kind"], format: doc.format as RenderedDocument["format"], verification: doc.verification as Record<string, unknown> }));
     if (!documents.length) {
       await save({ stage: "Rendering and inspecting documents" });
@@ -56,13 +58,13 @@ export async function executeTailoring(run: TailoringSelection) {
       if (documents.length !== (input.options.coverLetter ? 2 : 1) || documents.filter(doc => doc.kind === "resume").length !== 1 ||
         documents.filter(doc => doc.kind === "letter").length !== Number(input.options.coverLetter)) throw new Error("The renderer did not return the requested documents.");
       await ownedWrite(run.id, owner, tx => tx.tailoringRevision.createMany({ data: documents.map(doc => ({
-        ...doc, runId: run.id, pdf: new Uint8Array(doc.pdf), preview: new Uint8Array(doc.preview), verification: asJson(doc.verification), evidence: asJson(content!.evidence),
+        ...doc, runId: run.id, generation: run.generation, pdf: new Uint8Array(doc.pdf), preview: new Uint8Array(doc.preview), verification: asJson(doc.verification), evidence: asJson(content!.evidence),
       })) }));
     }
     await save({ stage: "Reviewing PDF evidence and match" });
     const review = await reviewResume(input, plan, content, documents, signal.signal);
     await ownedWrite(run.id, owner, async tx => {
-      await tx.tailoringRevision.updateMany({ where: { runId: run.id }, data: { matchReport: asJson(review) } });
+      await tx.tailoringRevision.updateMany({ where: { runId: run.id, generation: run.generation }, data: { matchReport: asJson(review) } });
       const ready = review.verified && review.problems.length === 0;
       await tx.tailoringSelection.update({ where: { id: run.id }, data: {
         status: ready ? "PENDING" : "FAILED", stage: ready ? "Pending submission" : "Verification failed",
@@ -73,7 +75,10 @@ export async function executeTailoring(run: TailoringSelection) {
   } catch (error) {
     const active = { id: run.id, owner, status: "RUNNING", leaseUntil: { gt: new Date() } };
     await prisma.tailoringSelection.updateMany({ where: { ...active, cancelRequested: true }, data: { status: "CANCELLED", stage: "Cancelled", owner: null, leaseUntil: null } });
-    await prisma.tailoringSelection.updateMany({ where: { ...active, cancelRequested: false }, data: { status: "FAILED", stage: "Preparation blocked", error: error instanceof Error ? error.message.slice(0, 1000) : "Preparation failed.", owner: null, leaseUntil: null } });
+    const message = error instanceof Error ? error.message.slice(0, 1000) : "Preparation failed.";
+    const stage = /^(Preparation needs five projects|Add a name to the validated profile)/.test(message) ? "Update project library" :
+      /overflow|printable page|one page|required hyperlink|missing protected fields|font cannot render/i.test(message) ? "Revise document" : "Preparation blocked";
+    await prisma.tailoringSelection.updateMany({ where: { ...active, cancelRequested: false }, data: { status: "FAILED", stage, error: message, owner: null, leaseUntil: null } });
   } finally { clearInterval(heartbeat); signal.abort(); }
 }
 

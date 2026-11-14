@@ -153,6 +153,21 @@ jobs:
       - run: yarn prisma generate
       # Headless Chromium, for the tests and for the app's PDFs.
       - run: yarn playwright install --with-deps --only-shell chromium
+        - name: Start the local fixture document worker
+          env:
+            DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dossier_e2e
+            DOSSIER_SECRET: e2e-secret-e2e-secret-e2e-secret-e2e
+            EXECUTION_ROOT: /tmp/dossier-e2e-worker
+          run: |
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended lmodern poppler-utils
+            yarn prisma migrate deploy
+            yarn tsx worker/server.ts > /tmp/dossier-e2e-worker.log 2>&1 &
+            for try in {1..30}; do
+              if curl -fsS -H "x-worker-token: $DOSSIER_SECRET" http://127.0.0.1:4310/health; then exit 0; fi
+              sleep 1
+            done
+            exit 1
       - run: yarn build
       - run: yarn test:e2e
 

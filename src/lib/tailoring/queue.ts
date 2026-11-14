@@ -22,13 +22,13 @@ export async function loadQueue(): Promise<QueueView> {
   const [control, rows] = await Promise.all([
     prisma.tailoringControl.findUnique({ where: { id: "queue" } }),
     prisma.tailoringSelection.findMany({ orderBy: { position: "asc" }, select: {
-      id: true, position: true, status: true, stage: true, error: true, score: true,
-      posting: { select: { company: true, role: true } }, revisions: { select: { id: true, kind: true, format: true } },
+      id: true, position: true, status: true, stage: true, error: true, score: true, generation: true,
+      posting: { select: { company: true, role: true } }, revisions: { select: { id: true, kind: true, format: true, generation: true } },
     } }),
   ]);
   return { paused: control?.paused ?? false, rows: rows.map(row => ({ id: row.id, ...row.posting, position: row.position,
     status: row.status as QueueStatus, stage: row.stage, error: row.error, score: row.score,
-    documents: row.status === "PENDING" ? row.revisions : [] })) };
+    documents: row.status === "PENDING" ? row.revisions.filter(doc => doc.generation === row.generation) : [] })) };
 }
 export async function pauseQueue(paused: boolean) {
   await transaction(tx => tx.tailoringControl.upsert({ where: { id: "queue" }, create: { paused }, update: { paused } }));
@@ -57,9 +57,26 @@ export async function cancelRun(id: string) {
   });
 }
 export async function retryRun(id: string) {
-  const updated = await transaction(tx => tx.tailoringSelection.updateMany({ where: { id, status: { in: ["FAILED", "CANCELLED"] } },
-    data: { status: "QUEUED", stage: "Waiting to retry", owner: null, leaseUntil: null, error: null, cancelRequested: false } }));
-  if (!updated.count) throw new ActionError("Only failed or cancelled preparations can be retried.");
+  await transaction(async tx => {
+    const row = await tx.tailoringSelection.findFirst({ where: { id, status: { in: ["FAILED", "CANCELLED"] } } });
+    if (!row) throw new ActionError("Only failed or cancelled preparations can be retried.");
+    const restartPlan = row.stage === "Update project library";
+    const rewrite = row.stage === "Verification failed" || row.stage === "Revise document";
+    const data: Prisma.TailoringSelectionUpdateInput = { status: "QUEUED", stage: "Waiting to retry", owner: null, leaseUntil: null, error: null, cancelRequested: false };
+    if (restartPlan || rewrite) {
+      const prior = Array.isArray(row.history) ? row.history : [];
+      data.history = asJson([...prior, { generation: row.generation, kbSnapshotId: row.kbSnapshotId, frozen: row.frozen, plan: row.plan, content: row.content, reason: row.error, report: row.matchReport }]);
+      data.generation = { increment: 1 };
+      data.content = Prisma.DbNull;
+      data.matchReport = Prisma.DbNull;
+      if (restartPlan) {
+        data.kbSnapshotId = null;
+        data.frozen = Prisma.DbNull;
+        data.plan = Prisma.DbNull;
+      }
+    }
+    await tx.tailoringSelection.update({ where: { id }, data });
+  });
 }
 export async function claimRun(now = new Date()) {
   return transaction(async tx => {
@@ -75,7 +92,10 @@ export async function claimRun(now = new Date()) {
     if (row.kbSnapshotId && row.frozen) return tx.tailoringSelection.update({ where: { id: row.id }, data: state });
     const snapshot = await captureKnowledgeSnapshot(tx);
     const preference = await tx.setting.findUnique({ where: { key: "workflow.tailoring" } });
-    const options = preference ? tailoringPreferencesSchema.parse(JSON.parse(preference.value)) : DEFAULT_TAILORING_PREFERENCES;
+    let options = DEFAULT_TAILORING_PREFERENCES;
+    if (preference) {
+      try { options = tailoringPreferencesSchema.safeParse(JSON.parse(preference.value)).data ?? options; } catch { /* Same default as the Knowledge editor for malformed legacy settings. */ }
+    }
     const config = configFrom((await tx.discoveryControl.findUnique({ where: { id: "discovery" } }))?.config);
     const frozen: Omit<FrozenInput,"kb"> = { jd: row.posting.jd, role: row.posting.role, company: row.posting.company, preparedAt: now.toISOString(), provider: config.provider, model: config.model, options };
     return tx.tailoringSelection.update({ where: { id: row.id }, data: { ...state, frozen: asJson(frozen), kbSnapshotId: snapshot.id } });
