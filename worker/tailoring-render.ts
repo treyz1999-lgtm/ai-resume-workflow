@@ -11,7 +11,7 @@ import { renderV5Resume, renderCoverLetter, type V5Contact } from "../src/lib/te
 
 const exec = promisify(execFile);
 const hash = (data: string | Uint8Array) => createHash("sha256").update(data).digest("hex");
-export const REGISTERED_MASTER = "fdb9532fc985503094a7a93ba63d94cfdc0af14ccaa0fd2732c08845f07a7e62";
+export const REGISTERED_MASTER = "b53cce3bb6f536e49d1192169a05d193d051eaa2b5b366b8ad22c090bdedaf8f";
 const requestSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("resume"), track: z.enum(["swe","data"]), resume: resumeRenderSchema }).strict(),
   z.object({ kind: z.literal("letter"), letter: letterRenderSchema }).strict(),

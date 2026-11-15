@@ -89,7 +89,13 @@ export function renderV5Resume(track: V5Track, input: V5ResumeInput): string {
   const experience = roles.map(role => `\\par\\addvspace{3pt}\\Needspace{4\\baselineskip}\n\\textbf{${escapeLatex(role.role)}}\\enspace\\textbar\\enspace ${escapeLatex(role.company)}\\enspace\\textbar\\enspace ${escapeLatex(role.location)}\\hfill ${escapeLatex(role.dates)}\n${bullets(role.bullets)}`).join("\n");
   const projects = input.projects.map(project => `\\projectHeading{\\href{${latexWebUrl(project.url)}}{${escapeLatex(project.name)}}}{${project.stack.map(escapeLatex).join(", ")}}\n${bullets(project.bullets)}`).join("\n");
   const education = input.education.map(entry => `\\par\\addvspace{3pt}\\textbf{${escapeLatex(entry.school)}}${entry.location ? `\\enspace\\textbar\\enspace ${escapeLatex(entry.location)}` : ""}\\hfill ${escapeLatex(entry.dates)}\\\\\n${escapeLatex(entry.degree)}\n${bullets(entry.details ?? [])}`).join("\n");
-  return `${V5_PREAMBLE}\n% V5 ${track.toUpperCase()} preset; work-history inclusion is profile data.\n${metadata(input.contact.name, `${input.contact.name} Resume`)}\n\\begin{document}\n${contactBlock(input.contact)}\n\\small\n\\section{Technical Skills}\n${skills}\n\\section{Experience}\n${experience}\n\\section{Projects}\n${projects}\n\\section{Education}\n${education}\n\\end{document}\n`;
+  const sections = [
+    ["Technical Skills", skills],
+    ["Experience", experience],
+    ["Projects", projects],
+    ["Education", education],
+  ].filter(([, body]) => body.trim()).map(([name, body]) => `\\section{${name}}\n${body}`).join("\n");
+  return `${V5_PREAMBLE}\n% V5 ${track.toUpperCase()} preset; work-history inclusion is profile data.\n${metadata(input.contact.name, `${input.contact.name} Resume`)}\n\\begin{document}\n${contactBlock(input.contact)}\n\\small\n${sections}\n\\end{document}\n`;
 }
 
 /** Basic local cover letter, with explicit author-provided prose and no invented claims. */

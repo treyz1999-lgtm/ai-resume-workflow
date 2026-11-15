@@ -38,6 +38,12 @@ describe("V5 data-driven presets", () => {
     expect(V5_PREAMBLE).toContain("\\newcommand{\\projectHeading}[2]");
     expect(V5_PREAMBLE).toContain("\\pdfgentounicode=1");
   });
+  it("omits empty sections after applying track preferences", () => {
+    const input = { ...fictionalResume, education: [], skills: [],
+      experience: fictionalResume.experience.map(role => ({ ...role, includeData: false })) };
+    const sections = [...renderV5Resume("data", input).matchAll(/\\section\{([^}]+)\}/g)].map(match => match[1]);
+    expect(sections).toEqual(["Projects"]);
+  });
   it("does not silently route an unsupported track", () => {
     expect(() => renderV5Resume("auto" as "swe", fictionalResume)).toThrow("SWE or Data");
   });
