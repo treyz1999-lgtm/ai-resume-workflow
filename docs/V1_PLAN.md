@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 ready for review; M4–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 ready for review; M5–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -82,13 +82,13 @@ Gate: no automatic tailoring, expiry respected, unchanged sightings deduplicate 
 
 Owners: workflow/infrastructure; product owns queue/progress.
 
-- [ ] Persistent FIFO queue with pause, remove, reorder, cancel, retry; latest full KB/JD frozen when run starts. Discovery findings are context only.
-- [ ] Planner/editor/reviewer responsibilities; consider every project and freeze exactly five before template access. Fewer than five valid projects produces a preparation blocker.
-- [ ] Configured SWE/Data composition, approved evidence, ownership/metric boundaries, project links, V5 writing rules.
-- [ ] Isolated working copies, immutable masters/history; local LaTeX default, HTML only for explicit theme override.
-- [ ] Verify current build, evidence, content, protected fields, project inventory, links, readable layout, and PDF text.
-- [ ] PDF, editable source, match report, verification record; HTML retains editable structured content/theme snapshot. Optional cover letter also verified.
-- [ ] Only verified outputs enter Pending submission.
+- [x] Persistent FIFO queue with pause, remove, reorder, cancel, retry; latest full KB/JD frozen when run starts. Discovery findings are context only.
+- [x] Planner/editor/reviewer responsibilities; consider every project and freeze exactly five before template access. Fewer than five valid projects produces a preparation blocker.
+- [x] Configured SWE/Data composition, approved evidence, ownership/metric boundaries, project links, V5 writing rules.
+- [x] Isolated working copies, immutable masters/history; local LaTeX default, HTML only for explicit theme override.
+- [x] Verify current build, evidence, content, protected fields, project inventory, links, readable layout, and PDF text.
+- [x] PDF, editable source, match report, verification record; HTML retains editable structured content/theme snapshot. Optional cover letter also verified.
+- [x] Only verified outputs enter Pending submission.
 
 Gate: SWE/Data/theme runs and cover-letter on/off; restart recovery, unsupported claims, overflow, links, duplicate projects, missing compiler inputs, queue removal, and one-active-application tests.
 
