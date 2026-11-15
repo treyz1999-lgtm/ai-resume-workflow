@@ -17,6 +17,16 @@ const doc=(text:string):RenderedDocument=>({kind:"resume",format:"latex",source:
 const pdf=[doc(["Morgan Example",...projects.slice(0,2).flatMap(p=>[p.name,p.bullets])].join("\n"))];
 beforeEach(()=>complete.mockReset());
 describe("V5 tailoring",()=>{
+  it("accepts omitted PDF word spacing without crediting missing words or substrings", () => {
+    const content = buildContent(input,plan,draft);
+    content.resume.contact.name = "Reporting Analyst";
+    const extracted = pdf[0].text.replace("Morgan Example", "ReportingAnalyst");
+    expect(assessReview(input, content, [doc(extracted)], report).verified).toBe(true);
+    expect(assessReview(input, content, [doc(extracted.replace("ReportingAnalyst", "ReportingAnalysts"))], report).verified).toBe(false);
+    const noSQL = assessReview(input, content, [doc(extracted.replaceAll("SQL", "NoSQL"))], report);
+    expect(noSQL.verified).toBe(false);
+    expect(noSQL.report.keywords).toContainEqual({keyword:"sql", covered:false});
+  });
   it("blocks fewer than five eligible projects before provider or template access",async()=>{
     await expect(planProjects({...input,kb:{...kb,projects:projects.slice(0,4)}},new AbortController().signal)).rejects.toThrow("Found 4");
     expect(complete).not.toHaveBeenCalled();
