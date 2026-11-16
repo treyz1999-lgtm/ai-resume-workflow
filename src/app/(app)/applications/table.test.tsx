@@ -28,7 +28,7 @@ const row = (id: string, extra: Partial<ApplicationRow> = {}): ApplicationRow =>
   updatedAt: Date.UTC(2026, 8, 26),
   ...extra,
 });
-const rows = [row("kestrel", { company: "Kestrel Maps", role: "Product Designer, Mobile", match: null }), row("draft", { status: "DRAFT", sent: null, location: "" })];
+const rows = [row("kestrel", { company: "Kestrel Maps", role: "Product Designer, Mobile", match: null, submittedScore: 83 }), row("draft", { status: "DRAFT", sent: null, location: "" })];
 const params: ListParams = { view: "table", filter: "all", q: "", sort: DEFAULT_SORT, archived: false };
 const open = (extra: Partial<ListParams> = {}) =>
   render(<ApplicationsScreen params={{ ...params, ...extra }} rows={rows} counts={{ all: 2, active: 2, closed: 0 }} summary="2 applications" empty={false} archivedCount={0} />);
@@ -47,6 +47,7 @@ describe("the table (E9-3)", () => {
       "Match",
       "Location",
       "Sent",
+      "Submitted score",
       "Updated ↓",
       "Actions",
     ]);
@@ -65,6 +66,7 @@ describe("the table (E9-3)", () => {
       "Not matched",
       "Amsterdam",
       "20 Sep",
+      "83%",
       "2 days ago",
       "⋯",
     ]);

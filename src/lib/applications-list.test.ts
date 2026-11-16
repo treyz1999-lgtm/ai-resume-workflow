@@ -57,6 +57,11 @@ describe("filters", () => {
 });
 
 describe("sortRows (E9-3)", () => {
+  it("sorts frozen scores and keeps unscored attempts last in both directions", () => {
+    const rows = [row("zero", { submittedScore: 0 }), row("legacy"), row("best", { submittedScore: 90 })];
+    expect(ids(sortRows(rows, { key: "submittedScore", reversed: false }))).toEqual(["best", "zero", "legacy"]);
+    expect(ids(sortRows(rows, { key: "submittedScore", reversed: true }))).toEqual(["zero", "best", "legacy"]);
+  });
   it("sorts the latest update first by default", () => {
     const rows = [row("old", { updatedAt: new Date(2026, 7, 1) }), row("new", { updatedAt: new Date(2026, 8, 20) })];
     expect(ids(sortRows(rows, DEFAULT_SORT))).toEqual(["new", "old"]);

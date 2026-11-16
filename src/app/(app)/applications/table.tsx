@@ -18,6 +18,7 @@ const COLUMNS: { key: SortKey; label: string; className: string }[] = [
   { key: "match", label: "Match", className: "w-[76px]" },
   { key: "location", label: "Location", className: "w-[18%]" },
   { key: "sent", label: "Sent", className: "w-[88px]" },
+  { key: "submittedScore", label: "Submitted score", className: "w-[116px]" },
   { key: "updated", label: "Updated", className: "w-[118px]" },
 ];
 
@@ -116,6 +117,7 @@ export function Table({
               <td className="py-3.5 pr-4 text-sm tabular-nums">{row.match ? `${row.match.hit}/${row.match.total}` : "Not matched"}</td>
               <td className="truncate py-3.5 pr-4 text-sm text-muted">{row.location || "Not given"}</td>
               <td className="py-3.5 pr-4 text-sm text-muted">{row.sent ?? "Not sent"}</td>
+              <td className="py-3.5 pr-4 text-sm tabular-nums">{row.submittedScore == null ? "—" : `${row.submittedScore}%`}</td>
               <td className="py-3.5 pr-4 text-sm text-muted">{row.updated}</td>
               <td className="py-3.5 pr-3 text-right">
                 <RowMenu row={row} onMove={(to) => onMove(row, to)} />

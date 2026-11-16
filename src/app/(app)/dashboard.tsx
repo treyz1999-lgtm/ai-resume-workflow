@@ -72,6 +72,7 @@ export function Dashboard({
               <Funnel figures={figures} />
               <ActivityChart weeks={figures.weeks} />
               <WhereThingsStand byStatus={figures.byStatus} />
+              <SubmittedScores scores={figures.submittedScores} />
               <WorthALook items={figures.attention} quietDays={quietDays} />
             </PeriodScoped>
           </Columns>
@@ -125,6 +126,30 @@ function Figure({ value, label }: { value: string; label: string }) {
       <dt className="text-label text-muted">{label}</dt>
       <dd className="font-serif text-[32px] leading-none tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+function SubmittedScores({ scores }: { scores: DashboardFigures["submittedScores"] }) {
+  return (
+    <section aria-labelledby="scores-heading" className={`${card} gap-4 px-7 py-[26px]`}>
+      <h2 id="scores-heading" className="text-[15px] font-medium">Submitted resume scores</h2>
+      {scores.length === 0 ? <p className="text-sm text-muted">No scored resumes were submitted in this period.</p> :
+        scores.map(({ method, count, average, outcomes }) => (
+          <div key={method}>
+            <p className="text-sm"><strong>{average}%</strong> average across {plural(count, "submission", "submissions")}</p>
+            <p className="mb-3 text-meta text-muted">Scoring method: {method}</p>
+            <table className="w-full text-left text-sm">
+              <thead className="text-meta text-muted"><tr><th scope="col">Current status</th><th scope="col">Submissions</th><th scope="col">Mean score</th></tr></thead>
+              <tbody>{outcomes.map(({ status, count, average }) => (
+                <tr key={status} className="border-t border-line">
+                  <th scope="row" className="py-1.5 font-normal">{STATUSES.find(({ value }) => value === status)?.label}</th>
+                  <td>{count}</td><td>{average}%</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        ))}
+    </section>
   );
 }
 

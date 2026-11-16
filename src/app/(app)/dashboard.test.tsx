@@ -13,6 +13,7 @@ vi.mock("./actions", () => ({ rememberDashboardPeriod: vi.fn(), rememberQuietDay
 vi.mock("@/components/toast", () => ({ toast: vi.fn(), toastResult: (result: unknown) => result }));
 
 const figures: DashboardFigures = {
+  submittedScores: [],
   total: 9,
   byStatus: { DRAFT: 2, SENT: 2, SCREENING: 1, INTERVIEW: 1, OFFER: 1, ACCEPTED: 0, REJECTED: 1, DECLINED: 1 },
   funnel: [

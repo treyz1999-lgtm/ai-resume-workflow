@@ -99,6 +99,7 @@ export function ApplicationsScreen({ params, rows, counts, summary, empty, archi
         description={summary}
         actions={
           <>
+            <Link href="/applications/tracker" className={buttonClassName("secondary", "sm")}>Tracker CSV</Link>
             <SegmentedControl<View>
               aria-label="View"
               size="sm"

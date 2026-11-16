@@ -186,7 +186,7 @@ function CardFace({ row, lifted = false, onOpen }: { row: ApplicationRow; lifted
         </p>
       )}
       <p className="mt-0.5 flex justify-between gap-2 border-t border-line pt-1.5 text-xs text-muted">
-        <span>{row.match ? `${row.match.hit}/${row.match.total} match` : "Not matched"}</span>
+        <span>{row.submittedScore != null ? `${row.submittedScore}% submitted · ${row.sent}` : row.match ? `${row.match.hit}/${row.match.total} match` : "Not matched"}</span>
         <span>{row.updated}</span>
       </p>
     </div>

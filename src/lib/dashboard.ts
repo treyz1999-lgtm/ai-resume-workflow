@@ -18,6 +18,7 @@ export type DashboardApplication = {
   /** When its status last changed; null when it never did. */
   lastStatusChange: Date | null;
   sentAt: Date | null;
+  submission?: { score: number; scoringMethod: string; submittedAt: Date } | null;
   /** The next interview, while in Interview (E9-9). */
   nextInterviewAt: Date | null;
   createdAt: Date;
@@ -82,6 +83,12 @@ export function periodFromParam(value: unknown): DashboardPeriod | null {
 const MAX_WEEKS = 52;
 
 export type DashboardFigures = {
+  submittedScores: {
+    method: string;
+    count: number;
+    average: number;
+    outcomes: { status: ApplicationStatus; average: number; count: number }[];
+  }[];
   /** Every application, whatever the period: none at all means the welcome. */
   total: number;
   /** How many applications are in each status now, all eight. */
@@ -159,6 +166,7 @@ export function dashboardFigures(
   const heardBack = reached(FunnelStage.SCREENING);
 
   return {
+    submittedScores: submittedScores(all, since),
     total: all.length,
     byStatus,
     funnel,
@@ -169,6 +177,33 @@ export function dashboardFigures(
     attention: worthALook(all.filter((application) => !application.archived), now, { quietDays, timeZone, replies }),
     weeks: weeklyActivity(applications, now, since),
   };
+}
+
+/** Group immutable submitted scores by scoring method and the attempt's current outcome. */
+function submittedScores(applications: readonly DashboardApplication[], since: number | null): DashboardFigures["submittedScores"] {
+  const methods = new Map<string, Map<ApplicationStatus, { count: number; points: number }>>();
+  for (const { submission, status } of applications) {
+    if (!submission || (since !== null && submission.submittedAt.getTime() < since)) continue;
+    const outcomes = methods.get(submission.scoringMethod) ?? new Map<ApplicationStatus, { count: number; points: number }>();
+    const group = outcomes.get(status) ?? { count: 0, points: 0 };
+    group.count += 1;
+    group.points += submission.score;
+    outcomes.set(status, group);
+    methods.set(submission.scoringMethod, outcomes);
+  }
+  return [...methods.keys()].sort().map((method) => {
+    const groups = methods.get(method)!;
+    let count = 0;
+    let points = 0;
+    const outcomes = STATUSES.flatMap(({ value: status }) => {
+      const group = groups.get(status);
+      if (!group) return [];
+      count += group.count;
+      points += group.points;
+      return [{ status, count: group.count, average: Math.round(group.points / group.count) }];
+    });
+    return { method, count, average: Math.round(points / count), outcomes };
+  });
 }
 
 /** The Monday of a date's week, at midnight in the server's time zone. */

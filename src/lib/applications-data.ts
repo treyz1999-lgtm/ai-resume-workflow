@@ -3,7 +3,7 @@ import "server-only";
 import type { ApplicationStatus } from "@/generated/prisma/enums";
 import { matchSchema, matchScore } from "@/lib/application-data";
 import { sortRows, updatedAgo, type Sort } from "@/lib/applications-list";
-import { formatCalendarDate, formatShortDate } from "@/lib/dates";
+import { formatCalendarDate, formatShortCalendarDate, formatShortDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 
 /** An application as the board and the table show it (E9-2, E9-3). */
@@ -19,6 +19,7 @@ export type ApplicationRow = {
   /** "Apply by" on draft cards, e.g. "3 Oct 2026". */
   deadline: string | null;
   match: { hit: number; total: number } | null;
+  submittedScore?: number | null;
   /** When it was sent, e.g. "18 Aug"; null while never sent. */
   sent: string | null;
   /** "Today", "3 days ago"… */
@@ -43,6 +44,7 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       deadline: true,
       match: true,
       sentAt: true,
+      submission: { select: { submittedAt: true, score: true } },
       updatedAt: true,
     },
   });
@@ -58,13 +60,14 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       archived: application.archivedAt !== null,
       deadline: application.deadline ? formatCalendarDate(application.deadline) : null,
       match: match.success && match.data.items.length > 0 ? matchScore(match.data) : null,
-      sentAt: application.sentAt,
+      submittedScore: application.submission?.score ?? null,
+      sentAt: application.submission?.submittedAt ?? application.sentAt,
       updatedAt: application.updatedAt,
     };
   });
   return sortRows(rows, sort).map(({ sentAt, updatedAt, ...row }): ApplicationRow => ({
     ...row,
-    sent: sentAt ? formatShortDate(sentAt, now) : null,
+    sent: sentAt ? (row.submittedScore === null ? formatShortDate(sentAt, now) : formatShortCalendarDate(sentAt, now)) : null,
     updated: updatedAgo(updatedAt, now),
     updatedAt: updatedAt.getTime(),
   }));

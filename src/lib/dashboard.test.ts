@@ -21,6 +21,22 @@ const app = (id: string, extra: Partial<DashboardApplication> = {}): DashboardAp
 });
 
 describe("dashboardFigures (E9-6)", () => {
+  it("groups scored submissions by method and outcome, including repeat attempts and zero scores", () => {
+    const submission = { score: 80, scoringMethod: "v1", submittedAt: daysAgo(1) };
+    const applications = [
+      app("first", { company: "Example", createdAt: daysAgo(60), status: "INTERVIEW", submission }),
+      app("again", { company: "Example", submission: { ...submission, score: 0 } }),
+      app("other-method", { submission: { ...submission, scoringMethod: "v2", score: 98 } }),
+      app("outside-period", { submission: { ...submission, submittedAt: daysAgo(45) } }),
+      app("unscored", { submission: null }),
+    ];
+    expect(dashboardFigures(applications, now, { period: "30d" }).submittedScores).toEqual([
+      { method: "v1", average: 40, count: 2, outcomes: [
+        { status: "SENT", count: 1, average: 0 }, { status: "INTERVIEW", count: 1, average: 80 },
+      ] },
+      { method: "v2", average: 98, count: 1, outcomes: [{ status: "SENT", count: 1, average: 98 }] },
+    ]);
+  });
   it("counts the funnel by the furthest stage reached, closed ones included", () => {
     const figures = dashboardFigures(
       [
