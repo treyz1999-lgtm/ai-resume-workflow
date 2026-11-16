@@ -45,8 +45,17 @@ export async function moveRun(id: string, direction: -1 | 1) {
   });
 }
 export async function removeRun(id: string) {
-  const result = await transaction(tx => tx.tailoringSelection.deleteMany({ where: { id, status: "QUEUED", generation: 1, revisions: { none: {} } } }));
-  if (!result.count) throw new ActionError("Only an unprepared waiting role can be removed. Cancel a queued revision to preserve its history.");
+  const count = await transaction(tx => removeWaiting(tx, { id }));
+  if (!count) throw new ActionError("This role is no longer waiting.");
+}
+/** Called under the queue/discovery lock by every deselection entry point. */
+export async function removeWaiting(tx: Tx, filter: Prisma.TailoringSelectionWhereInput) {
+  const where = { ...filter, status: "QUEUED" };
+  const fresh = await tx.tailoringSelection.deleteMany({ where: {
+    ...where, generation: 1, kbSnapshotId: null, revisions: { none: {} }, submission: { is: null },
+  } });
+  const retained = await tx.tailoringSelection.updateMany({ where, data: { status: "CANCELLED", stage: "Cancelled" } });
+  return fresh.count + retained.count;
 }
 export async function cancelRun(id: string) {
   await transaction(async tx => {

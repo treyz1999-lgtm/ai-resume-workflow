@@ -8,6 +8,7 @@ import {
 } from "./contracts";
 import { configFrom, enqueueScan, ensureControl, json, retryScan, scanLock } from "./store";
 import { discoveryAllowed } from "./timing";
+import { removeWaiting } from "../tailoring/queue";
 
 const idsSchema = z.array(z.string().min(1).max(200)).min(1).max(100);
 
@@ -66,7 +67,7 @@ export async function setDiscoveryState(ids: string[], input: PostingState): Pro
   await prisma.$transaction(async tx => {
     await scanLock(tx);
     await tx.discoveryPosting.updateMany({ where: { id: { in: selected } }, data: { state } });
-    if (state === "DISMISSED") await tx.tailoringSelection.deleteMany({ where: { postingId: { in: selected }, status: "QUEUED" } });
+    if (state === "DISMISSED") await removeWaiting(tx, { postingId: { in: selected } });
   });
 }
 export async function selectForTailoring(ids: string[]): Promise<void> {
@@ -81,5 +82,9 @@ export async function selectForTailoring(ids: string[]): Promise<void> {
   });
 }
 export async function removeTailoringSelection(id: string): Promise<void> {
-  await prisma.tailoringSelection.deleteMany({ where: { id: z.string().min(1).max(200).parse(id), status: "QUEUED" } });
+  const selectionId = z.string().min(1).max(200).parse(id);
+  await prisma.$transaction(async tx => {
+    await scanLock(tx);
+    await removeWaiting(tx, { id: selectionId });
+  });
 }

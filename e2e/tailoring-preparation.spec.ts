@@ -115,5 +115,48 @@ for (const variant of [
       await page.getByRole("heading", { name: "Pending submission (1)" }).scrollIntoViewIfNeeded();
       await page.screenshot({ path: "runtime/m4/queue-" + variant.track + (variant.themed ? "-theme" : "") + ".png" });
     }
+    if (variant.track === "data") {
+      await page.getByRole("link", { name: "Review documents" }).click();
+      const preview = page.getByRole("img", { name: "Resume rendered PDF page" });
+      await expect(preview).toBeVisible();
+      await expect.poll(() => preview.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await page.getByText("Evidence mappings", { exact: true }).click();
+      await expect(page.getByRole("definition").first()).toBeVisible();
+      await page.getByLabel("Submission date").fill("2026-11-04");
+      await page.getByRole("button", { name: "Mark submitted" }).click();
+      await expect(page.getByRole("link", { name: "View submitted application" })).toBeVisible();
+      const frozen = await sql('SELECT "applicationId","resumeRevisionId","letterRevisionId",score,"scoringMethod","submittedAt" FROM "TailoringSubmission"');
+      expect(frozen).toHaveLength(1);
+      expect(frozen[0]).toMatchObject({ resumeRevisionId: documents[0].id, letterRevisionId: documents[1].id, score: 100 });
+      if (process.env.M5_REVIEW_ARTIFACTS === "1") await page.screenshot({ path: "runtime/m5/document-review.png" });
+
+      // Editing queues a fresh generation; the recorded version stays downloadable.
+      await page.getByText("Edit a statement", { exact: true }).click();
+      const wording = page.getByLabel("Wording");
+      const before = await wording.inputValue();
+      const replacement = before.replace(/\.$/, "") + " for review.";
+      await wording.fill(replacement);
+      await page.getByRole("button", { name: "Save and verify" }).click();
+      const current = async (generation: number) => {
+        await expect.poll(async () => {
+          const [r] = await sql<{generation:number;status:string;error:string|null}>('SELECT generation,status,error FROM "TailoringSelection" WHERE "postingId"=\'fictional-role\'');
+          return r.generation === generation ? r.error ?? r.status : "waiting";
+        }, { timeout: 45_000 }).toBe("SUBMITTED");
+        await page.reload();
+      };
+      await current(2);
+      const [edited] = await sql<{text:string}>('SELECT text FROM "TailoringRevision" WHERE generation=2 AND kind=\'resume\'');
+      expect(edited.text.replace(/\s+/g," ")).toContain(replacement);
+      await page.getByLabel("Document version").selectOption("1");
+      await page.getByRole("button", { name: "Restore version 1 and verify" }).click();
+      await current(3);
+      const [restored] = await sql<{text:string}>('SELECT text FROM "TailoringRevision" WHERE generation=3 AND kind=\'resume\'');
+      expect(restored.text).toBe(documents[0].text);
+      await page.getByLabel("Refinement request").fill("Retain this documented evidence and its ownership.");
+      await page.getByRole("button",{name:"Request revision"}).click();
+      await current(4);
+      expect(await sql('SELECT "applicationId","resumeRevisionId","letterRevisionId",score,"scoringMethod","submittedAt" FROM "TailoringSubmission"')).toEqual(frozen);
+      expect((await request.get("/api/tailoring/revisions/" + documents[0].id + "?file=pdf")).ok()).toBe(true);
+    }
   });
 }

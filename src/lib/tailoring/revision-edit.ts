@@ -23,7 +23,7 @@ export function editClaim(base: TailoredContent, index: number, text: string) {
   for (const group of groups) {
     if (offset >= group.length) { offset -= group.length; continue; }
     if (!claim || group[offset] !== claim.text) break;
-    const metrics = (s: string) => s.match(/\d+(?:[.,]\d+)*(?:%|\+)?/g) ?? [];
+    const metrics = (s: string): string[] => s.match(/\d+(?:[.,]\d+)*(?:%|\+)?/g) ?? [];
     if (metrics(text).some(n => !metrics(claim.quote).includes(n))) throw new Error("A metric in the edit is missing from its KB quote.");
     if (group.some((line, i) => i !== offset && line.trim().toLowerCase() === text.toLowerCase())) throw new Error("The edit duplicates another statement in this section.");
     group[offset] = text;
