@@ -32,6 +32,9 @@ it("records concurrent confirmations once and freezes the selected PDF score acr
     submission: { score: 74, scoringMethod: "v5-evidence@1", resumeRevisionId: resume.id, letterRevisionId: letter.id } });
   expect(app.events).toHaveLength(1);
   await expect(markTailoringSubmitted(run.id, resume.id, null, "2026-11-01")).rejects.toThrow("already");
+  await db.application.delete({ where: { id } });
+  expect((await db.tailoringSelection.findUniqueOrThrow({ where: { id: run.id } })).status).toBe("PENDING");
+  expect(await submit()).not.toBe(id);
 });
 
 it("rejects mismatched and unverified documents while keeping reapplications distinct", async () => {

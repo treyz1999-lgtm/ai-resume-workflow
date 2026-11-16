@@ -14,6 +14,13 @@ const metadata = z.object({
   location: z.string().nullish(),
   salaryOriginal: z.string().nullish(),
   arrangement: z.string().nullish(),
+  experienceOriginal: z.string().nullish(),
+  salaryMin: z.number().nullish(),
+  salaryMax: z.number().nullish(),
+  salaryCurrency: z.string().nullish(),
+  salaryPeriod: z.string().nullish(),
+  experienceBand: z.string().nullish(),
+  track: z.string().nullish(),
 });
 const frozenPosting = z.object({ company: z.string(), role: z.string(), jd: z.string() });
 
@@ -50,6 +57,14 @@ export async function markTailoringSubmitted(
     const application = await tx.application.create({ data: {
       company: posting.company, role: posting.role, title: posting.role, postingText: posting.jd,
       postingUrl: run.posting.url, location: fields.location ?? "", salary: fields.salaryOriginal ?? "",
+      trackerCsv: {
+        job_source: run.posting.source, job_track: fields.track ?? "",
+        experience_requirement: fields.experienceOriginal ?? "", salary_min: fields.salaryMin?.toString() ?? "",
+        salary_max: fields.salaryMax?.toString() ?? "", resume_version: resumeRevisionId,
+        cover_letter_sent: letterRevisionId ? "Yes" : "No",
+        salary_currency: fields.salaryCurrency ?? "", salary_period: fields.salaryPeriod ?? "",
+        experience_band: fields.experienceBand ?? "",
+      },
       mode: fields.arrangement ?? "", status: "SENT", furthestStage: "SENT", sentAt: submittedAt,
       events: { create: { from: "DRAFT", to: "SENT", at: submittedAt } },
       submission: { create: {
