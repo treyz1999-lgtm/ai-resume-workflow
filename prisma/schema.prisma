@@ -94,6 +94,7 @@ model TailoringSelection {
   generation Int @default(1)
   history Json?
   revisions TailoringRevision[]
+  submission TailoringSubmission?
 }
 
 model TailoringControl {
@@ -117,6 +118,24 @@ model TailoringRevision {
   matchReport Json?
   createdAt DateTime @default(now())
   @@unique([runId,kind,generation])
+  submittedResume TailoringSubmission[] @relation("SubmittedResume")
+  submittedLetter TailoringSubmission[] @relation("SubmittedLetter")
+}
+
+model TailoringSubmission {
+  id String @id @default(cuid())
+  applicationId String @unique
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  runId String @unique
+  run TailoringSelection @relation(fields: [runId], references: [id], onDelete: Restrict)
+  resumeRevisionId String
+  resumeRevision TailoringRevision @relation("SubmittedResume", fields: [resumeRevisionId], references: [id], onDelete: Restrict)
+  letterRevisionId String?
+  letterRevision TailoringRevision? @relation("SubmittedLetter", fields: [letterRevisionId], references: [id], onDelete: Restrict)
+  submittedAt DateTime @db.Date
+  score Int
+  scoringMethod String
+  createdAt DateTime @default(now())
 }
 
 model ExecutionRun {
@@ -543,6 +562,8 @@ enum FunnelStage {
 }
 
 model Application {
+  submission          TailoringSubmission?
+  trackerCsv          Json?
   id                  String            @id @default(cuid())
   /// Whether the user made it, or the job agent prepared it (E16).
   origin              ApplicationOrigin @default(MANUAL)

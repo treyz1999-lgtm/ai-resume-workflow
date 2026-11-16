@@ -1,0 +1,13 @@
+ALTER TABLE "Application" ADD COLUMN "trackerCsv" JSONB;
+
+CREATE TABLE "TailoringSubmission" (
+  "id" TEXT PRIMARY KEY,
+  "applicationId" TEXT NOT NULL UNIQUE REFERENCES "Application"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  "runId" TEXT NOT NULL UNIQUE REFERENCES "TailoringSelection"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "resumeRevisionId" TEXT NOT NULL REFERENCES "TailoringRevision"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "letterRevisionId" TEXT REFERENCES "TailoringRevision"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "submittedAt" DATE NOT NULL,
+  "score" INTEGER NOT NULL CHECK ("score" BETWEEN 0 AND 100),
+  "scoringMethod" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
