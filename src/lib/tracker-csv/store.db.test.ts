@@ -39,3 +39,20 @@ it("keeps agency drafts private and discovery scores out of exported submitted s
   expect(exported).toHaveLength(1);
   expect(exported[0].fields.submitted_score).toBe("");
 });
+
+it("exports the exact frozen submission score and document IDs for a native preparation", async () => {
+  const {markTailoringSubmitted} = await import("@/lib/tailoring/submission");
+  const db = state.client!;
+  const run = await db.tailoringSelection.create({data:{
+    posting:{create:{identityKey:"csv-sample",occurrenceKey:"first",source:"TEXT",externalId:"csv-1",jd:"Fictional job",
+      postingEvidence:{},extracted:{location:"AZ",experienceOriginal:"3–5 years"},coverage:{score:95}}},
+    frozen:{company:"Fictional Co",role:"Engineer",jd:"Fictional job"}, status:"PENDING",
+  }});
+  const resume = await db.tailoringRevision.create({data:{runId:run.id,format:"latex",kind:"resume",source:"fixture",
+    pdf:new Uint8Array([1]),preview:new Uint8Array(),text:"test",verification:{},evidence:[],
+    matchReport:{verified:true,problems:[],score:0,report:{method:"v5-evidence@1"}}}});
+  await markTailoringSubmitted(run.id,resume.id,null,"2026-11-12");
+  const [record] = parseTracker(await exportAttempts());
+  expect(record.fields).toMatchObject({company:"Fictional Co",date_applied:"2026-11-12",job_source:"TEXT",resume_version:resume.id,
+    cover_letter_sent:"No",experience_requirement:"3–5 years",submitted_score:"0",scoring_method:"v5-evidence@1"});
+});

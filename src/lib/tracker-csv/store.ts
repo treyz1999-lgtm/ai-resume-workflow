@@ -17,6 +17,7 @@ export async function importAttempts(attempts: Attempt[]) {
     location:fields.state ?? "", mode:fields.work_arrangement ?? "",
     salary:fields.salary || [fields.salary_min,fields.salary_max].filter(Boolean).join(" – "),
     postingUrl:fields.posting_url ?? "",
+    createdAt:applied ?? undefined,
     sentAt:status === "DRAFT" ? null : applied,
     furthestStage:FUNNEL_STAGES.find(s => s === status) ?? (status === "REJECTED" || (status === "DECLINED" && applied) ? "SENT" : null),
   }))});

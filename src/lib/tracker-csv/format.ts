@@ -5,7 +5,7 @@ export const legacyColumns = [
   "work_arrangement", "salary_min", "salary_max", "resume_version", "cover_letter_sent",
   "experience_requirement", "application_status", "response_date", "interview_stage", "rejection_date",
 ] as const;
-export const columns = [...legacyColumns, "local_id", "posting_url", "salary", "local_status", "submitted_score", "scoring_method"] as const;
+export const columns = [...legacyColumns, "local_id", "posting_url", "salary", "salary_currency", "salary_period", "experience_band", "local_status", "submitted_score", "scoring_method"] as const;
 type Column = typeof columns[number];
 export type CsvFields = Partial<Record<Column, string>>;
 export class CsvError extends Error {}
@@ -77,6 +77,11 @@ export function parseTracker(text: string) {
     const statusText = (fields.local_status || fields.application_status || (applied ? "sent" : "draft")).trim().toLowerCase();
     const status = statusNames[statusText as keyof typeof statusNames];
     if (!Object.hasOwn(statusNames,statusText)) throw new CsvError(`Row ${row}: unrecognized application status "${statusText}".`);
+    if (fields.posting_url) {
+      let url: URL;
+      try { url = new URL(fields.posting_url); } catch { throw new CsvError(`Row ${row}: invalid posting_url.`); }
+      if (!["http:", "https:"].includes(url.protocol)) throw new CsvError(`Row ${row}: posting_url must use http or https.`);
+    }
     let key = fields.application_id?.trim();
     if (!key) {
       const signature = JSON.stringify([company,role,fields.date_applied,fields.posting_url,fields.job_source]);
