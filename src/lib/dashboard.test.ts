@@ -21,6 +21,13 @@ const app = (id: string, extra: Partial<DashboardApplication> = {}): DashboardAp
 });
 
 describe("dashboardFigures (E9-6)", () => {
+  it("includes the first local calendar day of a 30-day submission period", () => {
+    const submit = (date: string) => ({ score: 80, scoringMethod: "v1", submittedAt: new Date(date) });
+    const applications = [app("first", { submission: submit("2026-10-17") }), app("prior", { submission: submit("2026-10-16") })];
+    // Still November 15 in Phoenix.
+    const figures = dashboardFigures(applications, new Date("2026-11-16T04:00Z"), { period: "30d", timeZone: "America/Phoenix" });
+    expect(figures.submittedScores[0].count).toBe(1);
+  });
   it("groups scored submissions by method and outcome, including repeat attempts and zero scores", () => {
     const submission = { score: 80, scoringMethod: "v1", submittedAt: daysAgo(1) };
     const applications = [

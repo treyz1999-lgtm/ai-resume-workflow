@@ -1,5 +1,5 @@
 import { ApplicationStatus, FunnelStage } from "@/generated/prisma/enums";
-import { daysBetween, formatDateTime, formatDay, formatShortCalendarDate, formatTime } from "@/lib/dates";
+import { dayIn, daysBetween, formatDateTime, formatDay, formatShortCalendarDate, formatTime } from "@/lib/dates";
 import { FUNNEL_STAGES, STATUSES } from "@/lib/status";
 
 // Every dashboard figure (E9-6, PRD §6.7 and §8), worked out on the server
@@ -166,7 +166,7 @@ export function dashboardFigures(
   const heardBack = reached(FunnelStage.SCREENING);
 
   return {
-    submittedScores: submittedScores(all, since),
+    submittedScores: submittedScores(all, days === null ? null : dayIn(now, timeZone) - (days - 1) * DAY_MS),
     total: all.length,
     byStatus,
     funnel,

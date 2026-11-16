@@ -39,7 +39,7 @@ export function formatShortCalendarDate(date: Date, now = new Date()): string {
 // zone the browser reports (see src/lib/time-zone.ts), the server's when not given.
 
 /** The calendar day a moment falls on in a time zone, as UTC midnight of that day. */
-function dayIn(date: Date, timeZone?: string): number {
+export function dayIn(date: Date, timeZone?: string): number {
   const parts = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "numeric", day: "numeric", timeZone }).formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((entry) => entry.type === type)?.value);
   return Date.UTC(part("year"), part("month") - 1, part("day"));

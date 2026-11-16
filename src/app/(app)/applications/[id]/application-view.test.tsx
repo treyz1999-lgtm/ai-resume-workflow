@@ -146,6 +146,18 @@ beforeEach(() => {
 const summary = demoResumeUnits()[0];
 
 describe("the document tabs (E8-2)", () => {
+  it("shows the frozen submission and its review version, including an omitted letter", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationView {...props} submission={{
+      runId: "attempt", resumeRevisionId: "recorded", letterRevisionId: null,
+      generation: 2, submittedAt: "2 Nov 2026", score: 74,
+    }} />);
+    expect(screen.getByTitle("Submitted resume PDF")).toHaveAttribute("src", "/api/tailoring/revisions/recorded?file=pdf&inline=1");
+    expect(screen.getByRole("link", { name: "Review this version" })).toHaveAttribute("href", "/tailoring/attempt?version=2");
+    expect(screen.getByRole("link", { name: "Download submitted resume" })).toHaveAttribute("href", "/api/tailoring/revisions/recorded?file=pdf");
+    await user.click(screen.getByRole("tab", { name: "Cover letter" }));
+    expect(screen.getByText("No cover letter was submitted with this application.")).toBeVisible();
+  });
   it("has Resume, Cover letter, Email and the posting with its match", () => {
     render(<ApplicationView {...props} />);
     const tabs = within(screen.getByRole("tablist", { name: "Application" })).getAllByRole("tab");

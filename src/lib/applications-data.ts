@@ -43,6 +43,7 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       archivedAt: true,
       deadline: true,
       match: true,
+      trackerCsv: true,
       sentAt: true,
       submission: { select: { submittedAt: true, score: true } },
       updatedAt: true,
@@ -50,6 +51,8 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
   });
   const rows = applications.map((application) => {
     const match = matchSchema.safeParse(application.match);
+    const csv = application.trackerCsv;
+    const importedDate = csv && typeof csv === "object" && !Array.isArray(csv) && typeof csv.date_applied === "string" && csv.date_applied.trim() !== "";
     return {
       id: application.id,
       company: application.company.trim(),
@@ -61,13 +64,14 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       deadline: application.deadline ? formatCalendarDate(application.deadline) : null,
       match: match.success && match.data.items.length > 0 ? matchScore(match.data) : null,
       submittedScore: application.submission?.score ?? null,
+      calendarDate: Boolean(application.submission || importedDate),
       sentAt: application.submission?.submittedAt ?? application.sentAt,
       updatedAt: application.updatedAt,
     };
   });
-  return sortRows(rows, sort).map(({ sentAt, updatedAt, ...row }): ApplicationRow => ({
+  return sortRows(rows, sort).map(({ sentAt, updatedAt, calendarDate, ...row }): ApplicationRow => ({
     ...row,
-    sent: sentAt ? (row.submittedScore === null ? formatShortDate(sentAt, now) : formatShortCalendarDate(sentAt, now)) : null,
+    sent: sentAt ? (calendarDate ? formatShortCalendarDate(sentAt, now) : formatShortDate(sentAt, now)) : null,
     updated: updatedAgo(updatedAt, now),
     updatedAt: updatedAt.getTime(),
   }));

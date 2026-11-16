@@ -5,7 +5,7 @@ import { activityTimeline } from "@/lib/activity";
 import { isAiConfigured } from "@/lib/ai/config";
 import { editsSchema, matchSchema, matchScore } from "@/lib/application-data";
 import { loadApplication, loadDocuments, readJson } from "@/lib/application-documents";
-import { formatShortDate } from "@/lib/dates";
+import { formatCalendarDate, formatShortDate } from "@/lib/dates";
 import { resolveFileName } from "@/lib/file-name";
 import { refineJobKey } from "@/lib/jobs/refine";
 import { regenerateUnitJob, unitJobKey } from "@/lib/jobs/regenerate-unit";
@@ -79,6 +79,10 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
 
   return (
     <ApplicationView
+      submission={application.submission ? {
+        ...application.submission, submittedAt: formatCalendarDate(application.submission.submittedAt),
+        generation: application.submission.resumeRevision.generation,
+      } : null}
       application={{
         id,
         title,

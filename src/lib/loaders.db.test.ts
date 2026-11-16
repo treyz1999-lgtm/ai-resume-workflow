@@ -38,6 +38,13 @@ beforeEach(async () => {
 afterAll(() => prisma().$disconnect());
 
 describe("loadApplicationRows (E9-1)", () => {
+  it("preserves a tracker CSV calendar date when the server is west of UTC", async () => {
+    const app = await prisma().application.create({ data: {
+      role: "Fictional engineer", sentAt: new Date("2026-01-01"), trackerCsv: { date_applied: "2026-01-01" },
+    } });
+    const rows = await loadApplicationRows({ archived: false, sort: DEFAULT_SORT }, now);
+    expect(rows.find(row => row.id === app.id)?.sent).toBe("1 Jan");
+  });
   it("lists applications as the board and table show them, archived ones only when asked", async () => {
     await prisma().application.updateMany({ where: { company: "Quill & Co" }, data: { archivedAt: now } });
     const rows = await loadApplicationRows({ archived: false, sort: DEFAULT_SORT }, now);

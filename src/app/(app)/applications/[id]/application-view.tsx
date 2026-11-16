@@ -127,6 +127,10 @@ export type ApplicationViewProps = {
   /** Notes and status changes, newest first (E8-9). */
   activity: ActivityEntry[];
   meta: string[];
+  submission?: {
+    runId: string; resumeRevisionId: string; letterRevisionId: string | null;
+    generation: number; score: number; submittedAt: string;
+  } | null;
   resume: DocumentData | null;
   letter: DocumentData | null;
   /** Every theme, for the Theme menu (#226), and which is the base theme. */
@@ -175,6 +179,7 @@ export function ApplicationView({
   requirements,
   facts: factsAtLoad,
   activity,
+  submission,
   resume,
   letter,
   themes,
@@ -658,7 +663,9 @@ export function ApplicationView({
 
       <div className="@container flex min-h-0 flex-1 flex-wrap @min-[780px]/page:flex-nowrap">
         <TabsContent value="resume" className="flex min-h-0 min-w-0 flex-[999_1_480px]">
-          {resume && resumeTheme && resumeUnits ? (
+          {submission ? (
+            <SubmittedDocument submission={submission} kind="resume" />
+          ) : resume && resumeTheme && resumeUnits ? (
             <DocumentPreview
               meta={viewed(DocumentKind.RESUME) ? undefined : hint}
               notice={
@@ -696,7 +703,9 @@ export function ApplicationView({
         </TabsContent>
 
         <TabsContent value="letter" className="flex min-h-0 min-w-0 flex-[999_1_480px]">
-          {letter && letterTheme && letterUnits ? (
+          {submission ? (
+            <SubmittedDocument submission={submission} kind="letter" />
+          ) : letter && letterTheme && letterUnits ? (
             <DocumentPreview
               label={
                 <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -770,7 +779,7 @@ export function ApplicationView({
             setHistoryOf(null);
           }}
         />
-        <RefinePanel
+        {!(submission && (tab === "resume" || tab === "letter")) && <RefinePanel
           tab={tab}
           messages={[...messages, ...sending]}
           thinking={reply !== null}
@@ -795,7 +804,7 @@ export function ApplicationView({
               </button>
             ))
           }
-        </RefinePanel>
+        </RefinePanel>}
       </div>
     </Tabs>
     </div>
@@ -853,6 +862,27 @@ function PreviewSwitch({ label, checked, onCheckedChange }: { label: string; che
 }
 
 /** The canvas with a note in place of a document the application doesn't have. */
+function SubmittedDocument({ submission, kind }: {
+  submission: NonNullable<ApplicationViewProps["submission"]>; kind: "resume" | "letter";
+}) {
+  const revision = kind === "resume" ? submission.resumeRevisionId : submission.letterRevisionId;
+  if (!revision) return <MissingDocument>No cover letter was submitted with this application.</MissingDocument>;
+  const name = kind === "resume" ? "resume" : "cover letter";
+  const path = `/api/tailoring/revisions/${encodeURIComponent(revision)}`;
+  return (
+    <section className="flex min-w-0 flex-1 flex-col gap-3 p-5" aria-label={`Submitted ${name}`}>
+      <h2 className="font-serif text-section">Submitted {name}</h2>
+      <p className="text-sm text-muted">{submission.submittedAt} · Version {submission.generation}{kind === "resume" && ` · ${submission.score}% alignment`}</p>
+      <div className="flex flex-wrap gap-4 text-sm underline">
+        <a href={path + "?file=pdf&inline=1"} target="_blank" rel="noreferrer">Open PDF</a>
+        <a href={path + "?file=pdf"}>Download submitted {name}</a>
+        <Link href={`/tailoring/${encodeURIComponent(submission.runId)}?version=${submission.generation}`}>Review this version</Link>
+      </div>
+      <iframe title={`Submitted ${name} PDF`} className="min-h-[580px] w-full flex-1 rounded-control border border-line" src={path + "?file=pdf&inline=1"} />
+    </section>
+  );
+}
+
 function MissingDocument({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-1 justify-center overflow-auto bg-canvas px-10 pt-16 pb-16">

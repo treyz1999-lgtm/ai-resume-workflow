@@ -24,6 +24,10 @@ export const loadApplication = cache(async (id: string) => {
   const application = await prisma.application.findUnique({
     where: { id },
     include: {
+      submission: { select: {
+        runId: true, resumeRevisionId: true, letterRevisionId: true,
+        score: true, submittedAt: true, resumeRevision: { select: { generation: true } },
+      } },
       documents: { include: { theme: { select: THEME_FIELDS } } },
       messages: { orderBy: { createdAt: "asc" } },
       notes: true,
