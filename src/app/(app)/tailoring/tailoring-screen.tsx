@@ -33,6 +33,7 @@ export function TailoringScreen({ view }: { view: QueueView }) {
   const waiting = view.rows.filter(row => row.status === "QUEUED").sort((a, b) => a.position - b.position);
   const active = view.rows.filter(row => row.status === "RUNNING");
   const pending = view.rows.filter(row => row.status === "PENDING");
+  const submitted = view.rows.filter(row => row.status === "SUBMITTED");
   const interrupted = view.rows.filter(row => row.status === "FAILED" || row.status === "CANCELLED");
   const watching = active.length > 0 || (!view.paused && waiting.length > 0);
   useEffect(() => {
@@ -88,6 +89,7 @@ export function TailoringScreen({ view }: { view: QueueView }) {
           <p className="font-medium">{jobName(row)}</p>
           <p className="text-sm text-muted">{row.status === "CANCELLED" ? "Cancelled" : "Preparation stopped"}{row.stage ? " · " + row.stage : ""}</p>
           {row.error && <p className="text-sm">{row.error}</p>}
+          <Link className="underline" href={"/tailoring/" + row.id}>Review preparation history</Link>
           <Button size="sm" variant="secondary" disabled={busy} onClick={() => update(() => retry({ id: row.id }), "Preparation queued for retry.")}>Retry preparation</Button>
         </div>)}
       </Card>}
@@ -97,9 +99,14 @@ export function TailoringScreen({ view }: { view: QueueView }) {
         {pending.map(row => <div key={row.id} className="flex flex-col gap-2 border-t border-line pt-3">
           <p className="font-medium">{jobName(row)}</p>
           <p className="text-sm text-muted">Verified{row.score !== null && " · Resume evidence alignment " + row.score + "%"}</p>
+          <Link className="underline" href={"/tailoring/" + row.id}>Review documents</Link>
           <Documents documents={row.documents} />
         </div>)}
       </Card>
+      {submitted.length > 0 && <Card className="space-y-2">
+        <h2 className="text-xl">Submitted documents</h2>
+        {submitted.map(row => <p key={row.id}><Link className="underline" href={"/tailoring/" + row.id}>{jobName(row)}</Link></p>)}
+      </Card>}
     </div>
   </>;
 }

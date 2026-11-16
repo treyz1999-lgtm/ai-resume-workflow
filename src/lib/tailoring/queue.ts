@@ -45,8 +45,8 @@ export async function moveRun(id: string, direction: -1 | 1) {
   });
 }
 export async function removeRun(id: string) {
-  const result = await transaction(tx => tx.tailoringSelection.deleteMany({ where: { id, status: "QUEUED" } }));
-  if (!result.count) throw new ActionError("This role is no longer waiting.");
+  const result = await transaction(tx => tx.tailoringSelection.deleteMany({ where: { id, status: "QUEUED", generation: 1, revisions: { none: {} } } }));
+  if (!result.count) throw new ActionError("Only an unprepared waiting role can be removed. Cancel a queued revision to preserve its history.");
 }
 export async function cancelRun(id: string) {
   await transaction(async tx => {

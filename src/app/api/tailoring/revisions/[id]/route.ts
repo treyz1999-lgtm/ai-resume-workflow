@@ -4,15 +4,16 @@ import { route } from "@/lib/route";
 export const GET = route<{ params: Promise<{ id: string }> }>(async (request, { params }) => {
   const { id } = await params;
   const file = request.nextUrl.searchParams.get("file") ?? "pdf";
-  const where = { id, run: { status: "PENDING" }, matchReport: { path: ["verified"], equals: true } };
+  const where = { id, matchReport: { path: ["verified"], equals: true } };
+  const inline = request.nextUrl.searchParams.get("inline") === "1" && (file === "pdf" || file === "preview");
   const missing = () => new Response(null, { status: 404 });
   function download(body: BodyInit, mime: string, name: string) {
     return new Response(body, { headers: {
-      "Content-Type": mime, "Content-Disposition": 'attachment; filename="' + name + '"',
+      "Content-Type": mime, "Content-Disposition": (inline ? "inline" : "attachment") + '; filename="' + name + '"',
       "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
     } });
   }
-  // Each query enforces readiness and reads just the requested artifact.
+  // Each query enforces verification on the immutable revision and reads just the requested artifact.
   const db = prisma.tailoringRevision;
   if (file === "pdf" || file === "preview") {
     const revision = await db.findFirst({ where, select: { kind: true, pdf: file === "pdf", preview: file === "preview" } });

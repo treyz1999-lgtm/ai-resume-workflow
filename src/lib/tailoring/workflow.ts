@@ -39,7 +39,7 @@ export async function planProjects(input:FrozenInput,signal:AbortSignal):Promise
 }
 export async function editResume(input:FrozenInput,plan:SelectionPlan,signal:AbortSignal):Promise<TailoredContent>{
   checkPlan(input,plan);
-  return buildContent(input,plan,await execute("edit",input,{kb:input.kb,jd:input.jd,company:input.company,role:input.role,options:input.options,plan,revisionFeedback:input.revisionFeedback},signal));
+  return buildContent(input,plan,await execute("edit",input,{kb:input.kb,jd:input.jd,company:input.company,role:input.role,options:input.options,plan,revisionFeedback:input.revisionFeedback,priorContent:input.priorContent},signal));
 }
 /** Poppler can omit a space between positioned HTML words (e.g. ReportingAnalyst).
  * Only spaces present in the expected phrase may disappear. Match whole words

@@ -6,7 +6,7 @@ export type FrozenInput = {
   kb: unknown; jd: string; company: string; role: string; preparedAt: string;
   options: { track: "auto" | V5Track; themeId: string | null; coverLetter: boolean };
   provider: "codex" | "configured"; model: string;
-  revisionFeedback?: string;
+  revisionFeedback?: string; priorContent?: TailoredContent;
 };
 export type SelectionPlan = { reviewed: { id: string; reason: string }[]; selected: string[]; rationale: string };
 export type TailoredContent = {
@@ -19,7 +19,7 @@ export type RenderedDocument = {
   pdf: Uint8Array; preview: Uint8Array; text: string; verification: Record<string, unknown>;
 };
 export type ReviewResult = { verified: boolean; problems: string[]; score: number | null; report: Record<string, unknown> };
-export type QueueStatus = "QUEUED" | "RUNNING" | "FAILED" | "CANCELLED" | "PENDING";
+export type QueueStatus = "QUEUED" | "RUNNING" | "FAILED" | "CANCELLED" | "PENDING" | "SUBMITTED";
 export type QueueView = { paused: boolean; rows: {
   id: string; role: string; company: string; status: QueueStatus; stage: string; error: string | null;
   position: number; score: number | null; documents: { id: string; kind: string; format: string }[];

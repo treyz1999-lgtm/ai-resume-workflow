@@ -27,6 +27,7 @@ export async function executeTailoring(run: TailoringSelection) {
     const input: FrozenInput = { ...(run.frozen as unknown as Omit<FrozenInput, "kb">), kb: snapshot.payload };
     const previous = Array.isArray(run.history) ? run.history.at(-1) : null;
     if (previous && typeof previous === "object" && "reason" in previous && typeof previous.reason === "string") input.revisionFeedback = previous.reason;
+    if (previous && typeof previous === "object" && "content" in previous && previous.content) input.priorContent = previous.content as unknown as TailoredContent;
     let plan = run.plan as unknown as SelectionPlan | null;
     if (!plan) {
       await save({ stage: "Comparing all projects" });
@@ -66,8 +67,10 @@ export async function executeTailoring(run: TailoringSelection) {
     await ownedWrite(run.id, owner, async tx => {
       await tx.tailoringRevision.updateMany({ where: { runId: run.id, generation: run.generation }, data: { matchReport: asJson(review) } });
       const ready = review.verified && review.problems.length === 0;
+      const submitted = ready && await tx.tailoringSelection.count({ where: { id: run.id, submission: { isNot: null } } });
       await tx.tailoringSelection.update({ where: { id: run.id }, data: {
-        status: ready ? "PENDING" : "FAILED", stage: ready ? "Pending submission" : "Verification failed",
+        status: submitted ? "SUBMITTED" : ready ? "PENDING" : "FAILED",
+        stage: submitted ? "Verified revision after submission" : ready ? "Pending submission" : "Verification failed",
         score: ready ? review.score : null, error: ready ? null : review.problems.join(" ").slice(0, 2000) || "The reviewer could not verify this revision.",
         matchReport: asJson(review), owner: null, leaseUntil: null,
       } });
