@@ -1006,6 +1006,25 @@ enum ReplyKind {
 
 /// A mail in Gmail about an application, or one that may be (E15-3). Only
 /// the text is kept, not attachments.
+model EmailStatusFinding {
+  id String @id @default(cuid())
+  messageId String @unique
+  threadId String
+  emailDate DateTime
+  company String
+  role String
+  summary String
+  kind String
+  evidence Json
+  candidates Json
+  applicationId String?
+  result String @default("REVIEW")
+  createdAt DateTime @default(now())
+
+  @@index([emailDate])
+  @@index([applicationId, emailDate])
+}
+
 model EmailMessage {
   id              String             @id @default(cuid())
   gmailId         String             @unique
