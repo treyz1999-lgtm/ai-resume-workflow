@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 ready for review; M5–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 ready for review; M6–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -96,11 +96,11 @@ Gate: SWE/Data/theme runs and cover-letter on/off; restart recovery, unsupported
 
 Owners: product/workflow; coordinator owns schema changes.
 
-- [ ] Actual PDF preview, evidence, rationale, reports, verification; retain chat refinement, edits, undo, version history.
-- [ ] Revisions invalidate readiness until affected checks pass.
-- [ ] Retain board/table/dashboard, notes, outcomes. Mark submitted with date and selected versions.
-- [ ] Separate attempts for reapplications; retries stay in their attempt. Local tracker is authoritative; CSV import/export with preview/validation. Personal migration later.
-- [ ] Analytics use submitted-resume scores, never discovery scores.
+- [x] Actual PDF preview, evidence, rationale, reports, verification; retain chat refinement, edits, undo, version history.
+- [x] Revisions invalidate readiness until affected checks pass.
+- [x] Retain board/table/dashboard, notes, outcomes. Mark submitted with date and selected versions.
+- [x] Separate attempts for reapplications; retries stay in their attempt. Local tracker is authoritative; CSV import/export with preview/validation. Personal migration later.
+- [x] Analytics use submitted-resume scores, never discovery scores.
 
 Scoring: V5 weighted evidence alignment uses core/must-have weight 2, preference weight 1; direct evidence 1, partial 0.5, absent 0. Discovery evaluates full KB; final score credits only supported evidence demonstrated in final PDF. Report keyword coverage separately; preserve scoring method/version.
 

@@ -157,6 +157,16 @@ for (const variant of [
       await current(4);
       expect(await sql('SELECT "applicationId","resumeRevisionId","letterRevisionId",score,"scoringMethod","submittedAt" FROM "TailoringSubmission"')).toEqual(frozen);
       expect((await request.get("/api/tailoring/revisions/" + documents[0].id + "?file=pdf")).ok()).toBe(true);
+      await page.getByRole("link", { name: "View submitted application" }).click();
+      const submittedPreview = page.getByAltText("Submitted resume PDF page");
+      await expect(submittedPreview).toBeVisible();
+      await expect.poll(() => submittedPreview.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+      await expect(page.getByRole("link", { name: "Download submitted resume" })).toHaveAttribute("href", "/api/tailoring/revisions/" + documents[0].id + "?file=pdf");
+      await page.goto("/applications?view=table&filter=all");
+      const tracked = page.getByRole("row").filter({ hasText: "Example Systems" });
+      await expect(tracked).toContainText("100%");
+      await page.goto("/");
+      await expect(page.getByRole("region", { name: "Submitted resume scores" })).toContainText("100%");
     }
   });
 }

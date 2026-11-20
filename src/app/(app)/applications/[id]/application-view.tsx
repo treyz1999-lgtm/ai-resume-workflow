@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Switch } from "radix-ui";
 import { useEffect, useId, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
@@ -878,7 +879,7 @@ function SubmittedDocument({ submission, kind }: {
         <a href={path + "?file=pdf"}>Download submitted {name}</a>
         <Link href={`/tailoring/${encodeURIComponent(submission.runId)}?version=${submission.generation}`}>Review this version</Link>
       </div>
-      <iframe title={`Submitted ${name} PDF`} className="min-h-[580px] w-full flex-1 rounded-control border border-line" src={path + "?file=pdf&inline=1"} />
+      <Image unoptimized width={850} height={1100} alt={`Submitted ${name} PDF page`} className="h-auto w-full max-w-[850px] rounded-control border border-line" src={path + "?file=preview&inline=1"} />
     </section>
   );
 }
