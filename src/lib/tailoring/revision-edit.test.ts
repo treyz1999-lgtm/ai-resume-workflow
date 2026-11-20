@@ -27,3 +27,12 @@ it("keeps the source quote and rejects changed metrics or stale evidence positio
   base.evidence[0].text="Another statement.";
   expect(() => editClaim(base,0,"Reviewed reports.")).toThrow(/does not match/);
 });
+it("handles letter paragraphs and rejects duplicate statements in the same section", () => {
+  const base=make();
+  base.letter={contact:{name:"Example"},company:"Example",role:"Engineer",date:"2026-11-01",salutation:"Hello",paragraphs:["Built reports."],closing:"Regards"};
+  base.evidence.push({text:"Built reports.",quote:"Built reports.",sourceId:"project"});
+  expect(editClaim(base,2,"Built reliable reports.").letter?.paragraphs).toEqual(["Built reliable reports."]);
+  base.resume.experience[0].bullets.push("Checked outputs.");
+  base.evidence.splice(1,0,{text:"Checked outputs.",quote:"Checked outputs.",sourceId:"role"});
+  expect(() => editClaim(base,0,"Checked outputs.")).toThrow("duplicates");
+});
