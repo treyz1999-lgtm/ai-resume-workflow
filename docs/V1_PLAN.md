@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 ready for review; M6–M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 approved and pushed; M6 ready for review; M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -110,10 +110,10 @@ Gate: submission freezes revision/score; later edits cannot rewrite history; dis
 
 Owners: workflow/product; verification owns matching tests.
 
-- [ ] Retain optional Gmail, inbox, drafting, explicit send; Check updates report modeled on application-status-report.
-- [ ] Read full relevant messages/threads, exclude receipts/marketing, deduplicate, process chronologically.
-- [ ] Confident matches update existing attempts; uncertain reapplications require review. Preserve email references/status history.
-- [ ] Optional Calendar with proposed changes confirmed first; no automated submission or scheduled outbound mail.
+- [x] Retain optional Gmail, inbox, drafting, explicit send; Check updates report modeled on application-status-report.
+- [x] Read full relevant messages/threads, exclude receipts/marketing, deduplicate, process chronologically.
+- [x] Confident matches update existing attempts; uncertain reapplications require review. Preserve email references/status history.
+- [x] Optional Calendar with proposed changes confirmed first; no automated submission or scheduled outbound mail.
 
 Gate: fictional rejections/interviews/assessments/offers, ambiguous duplicate roles, older quoted updates. Live checks only through user's sign-in. Tests never send real mail or change real calendars.
 
