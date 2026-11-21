@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { loadSettings } from "@/lib/settings-data";
 import { lastKnownTimeZone } from "@/lib/time-zone";
+import { formatDateTime } from "@/lib/dates";
 
 import { googleConnection } from "./account";
 import { busyTimes, createEvent, deleteEvent, getEvent, moveEvent } from "./calendar";
@@ -64,6 +65,31 @@ const eventFor = (application: { id: string; company: string; role: string; titl
     description: `Added by Dossier for your application${application.company ? ` to ${application.company}` : ""}.`,
   };
 };
+
+/** Reads the proposed change before either interview editor can write it. */
+export async function previewInterview(applicationId: string, start: Date | null): Promise<string> {
+  const application = await prisma.application.findUniqueOrThrow({
+    where: { id: applicationId },
+    select: { id: true, company: true, role: true, title: true, interviewEventId: true, interviewCalendarId: true },
+  });
+  const [inUse, hours] = await Promise.all([calendarInUse(), workingHours()]);
+  const title = eventFor(application).summary;
+  if (!inUse) return start
+    ? `${title}. Save ${formatDateTime(start, hours.timeZone)} (${hours.timeZone}) on your dashboard. Google Calendar is off.`
+    : `Remove the interview date for ${title} from your dashboard. Google Calendar is off.`;
+  const linked = application.interviewEventId && application.interviewCalendarId
+    ? await getEvent(application.interviewCalendarId, application.interviewEventId) : null;
+  if (!start) return linked
+    ? `Remove “${linked.title}” from calendar ${application.interviewCalendarId} and clear its dashboard date.`
+    : `Clear the dashboard date for ${title}. There is no linked calendar event to remove.`;
+  const moving = linked?.start && linked.end && application.interviewCalendarId === inUse.calendarId;
+  const length = moving ? linked.end!.getTime() - linked.start!.getTime() : hours.slotMinutes * 60_000;
+  const end = new Date(start.getTime() + length);
+  const operation = moving ? "Move" : "Create";
+  const previous = linked && application.interviewCalendarId !== inUse.calendarId
+    ? ` Remove the previous event from calendar ${application.interviewCalendarId}.` : "";
+  return `${operation} “${moving ? linked.title : title}” in calendar ${inUse.calendarId}. ${formatDateTime(start, hours.timeZone)} to ${formatDateTime(end, hours.timeZone)} (${hours.timeZone}).${previous} Update the dashboard date too.`;
+}
 
 /**
  * Brings the calendar in step with the application's next interview: adds

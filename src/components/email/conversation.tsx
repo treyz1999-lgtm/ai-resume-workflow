@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import {
   applySuggestedStatus,
   confirmInterview,
+  previewInterviewChange,
   loadFreeSlots,
   markHandled,
   rereadEmail,
@@ -195,6 +196,12 @@ function InterviewConfirm({ email, timeZone }: { email: EmailView; timeZone?: st
   const router = useRouter();
   const [move, setMove] = useState(email.application?.status !== "INTERVIEW");
   const [pending, startTransition] = useTransition();
+  const [proposal, setProposal] = useState<string | null>(null);
+  const preview = () => startTransition(async () => {
+    const result = await previewInterviewChange({ applicationId: email.application!.id, start: email.confirmedAt!.toISOString() });
+    if (!result.ok) return toast(result.error);
+    setProposal(result.data);
+  });
   const confirm = () =>
     startTransition(async () => {
       const result = await confirmInterview({ emailId: email.id, start: email.confirmedAt!.toISOString(), moveToInterview: move });
@@ -205,10 +212,12 @@ function InterviewConfirm({ email, timeZone }: { email: EmailView; timeZone?: st
   return (
     <Panel title={`Interview on ${formatWhen(email.confirmedAt!, timeZone)}`}>
       <p className="text-meta text-muted">They settled on this time. Add it to your calendar and dashboard?</p>
+      {proposal && <p role="status" className="text-sm">{proposal}</p>}
       {email.application?.status !== "INTERVIEW" && <Checkbox label="Move to Interview too" checked={move} onChange={(event) => setMove(event.target.checked)} />}
       <div className="flex justify-end">
-        <Button size="sm" disabled={pending} onClick={confirm}>
-          {pending ? "Adding…" : "Add interview"}
+        {proposal && <Button size="sm" variant="secondary" disabled={pending} onClick={() => setProposal(null)}>Cancel change</Button>}
+        <Button size="sm" disabled={pending} onClick={proposal ? confirm : preview}>
+          {pending ? "Working…" : proposal ? "Confirm interview" : "Add interview"}
         </Button>
       </div>
     </Panel>

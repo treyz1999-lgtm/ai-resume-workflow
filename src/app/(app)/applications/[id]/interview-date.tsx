@@ -7,6 +7,7 @@ import { toastResult } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/dates";
+import { previewInterviewChange } from "@/lib/google/actions";
 
 import { setInterviewDate } from "./actions";
 
@@ -76,7 +77,7 @@ export function InterviewDate({
           collisionPadding={16}
           className="z-30 w-[min(320px,calc(100vw-32px))] rounded-card border border-line-popover bg-card p-5 shadow-menu"
         >
-          <InterviewForm initial={shown} asking={asking} onSave={save} onCancel={() => onOpenChange(false)} />
+          <InterviewForm id={id} initial={shown} asking={asking} onSave={save} onCancel={() => onOpenChange(false)} />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
@@ -85,41 +86,51 @@ export function InterviewDate({
 
 /** The popover's form; mounted on every open, so it starts from what's saved. */
 function InterviewForm({
+  id,
   initial,
   asking,
   onSave,
   onCancel,
 }: {
+  id: string;
   initial: Date | null;
   asking: boolean;
   onSave: (at: Date | null) => void;
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(() => (initial ? localInputValue(initial) : ""));
+  const [proposal, setProposal] = useState<{ description: string; at: Date | null } | null>(null);
+  const [pending, startTransition] = useTransition();
+  const preview = (at: Date | null) => startTransition(async () => {
+    const result = toastResult(await previewInterviewChange({ applicationId: id, start: at?.toISOString() ?? null }));
+    if (result.ok) setProposal({ description: result.data, at });
+  });
   return (
     <form
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (value) onSave(new Date(value));
+        if (proposal) onSave(proposal.at);
+        else if (value) preview(new Date(value));
       }}
     >
       <div className="flex flex-col gap-1">
         <h2 className="text-[15px] font-medium">{asking ? "When's the interview?" : "Next interview"}</h2>
         <p className="text-meta text-muted">{asking ? "Optional. " : ""}It shows on your dashboard, flagged the day before.</p>
       </div>
-      <Input type="datetime-local" label="Date and time" value={value} onChange={(event) => setValue(event.target.value)} required />
+      <Input type="datetime-local" label="Date and time" value={value} onChange={(event) => { setValue(event.target.value); setProposal(null); }} required={!proposal} disabled={pending} />
+      {proposal && <p role="status" className="text-sm">{proposal.description}</p>}
       <div className="flex items-center gap-2">
         {initial && (
-          <Button variant="danger-text" size="sm" onClick={() => onSave(null)}>
+          <Button variant="danger-text" size="sm" disabled={pending} onClick={() => preview(null)}>
             Remove
           </Button>
         )}
         <Button variant="secondary" size="sm" className="ml-auto" onClick={onCancel}>
           {asking ? "Skip" : "Cancel"}
         </Button>
-        <Button type="submit" size="sm">
-          Save
+        <Button type="submit" size="sm" disabled={pending}>
+          {proposal ? "Confirm change" : "Review change"}
         </Button>
       </div>
     </form>

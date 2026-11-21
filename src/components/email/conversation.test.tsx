@@ -19,6 +19,7 @@ import { Conversation } from "./conversation";
 vi.mock("@/lib/google/actions", () => ({
   applySuggestedStatus: vi.fn(async () => ({ ok: true, data: { eventId: "ev" }, toast: "An interview! You've got this." })),
   confirmInterview: vi.fn(async () => ({ ok: true, data: { eventLink: null, eventId: null }, toast: "Interview added." })),
+  previewInterviewChange: vi.fn(async () => ({ ok: true, data: "Create Interview in primary. 22 Oct 14:00 to 14:45 (Europe/Berlin)." })),
   loadFreeSlots: vi.fn(async () => ({ ok: true, data: { slots: [{ start: "2026-10-20T08:00:00.000Z", label: "Tue 20 Oct, 10:00–10:45" }, { start: "2026-10-21T12:00:00.000Z", label: "Wed 21 Oct, 14:00–14:45" }], timeZone: "Europe/Berlin", fromCalendar: true } })),
   markHandled: vi.fn(async () => ({ ok: true, data: null })),
   rereadEmail: vi.fn(async () => ({ ok: true, data: null })),
@@ -105,6 +106,12 @@ describe("Conversation (E15-3, E15-4)", () => {
     render(<Conversation emails={[email({ confirmedAt: new Date("2026-10-22T12:00:00Z"), suggestedStatus: null })]} aiReady timeZone="Europe/Berlin" />);
     expect(screen.getByRole("heading", { name: "Interview on 22 Oct, 14:00" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add interview" }));
+    expect(confirmInterview).not.toHaveBeenCalled();
+    expect(screen.getByText(/Create Interview in primary/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Cancel change" }));
+    expect(confirmInterview).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Add interview" }));
+    await user.click(screen.getByRole("button", { name: "Confirm interview" }));
     expect(confirmInterview).toHaveBeenCalledWith({ emailId: "e1", start: "2026-10-22T12:00:00.000Z", moveToInterview: true });
     expect(loadFreeSlots).not.toHaveBeenCalledTimes(2);
   });

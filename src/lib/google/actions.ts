@@ -16,7 +16,7 @@ import { statusInfo } from "@/lib/status";
 import { applyStatusChange } from "@/lib/status-changes";
 
 import { disconnectGoogle, googleConnection } from "./account";
-import { proposeSlots, scheduleInterview } from "./availability";
+import { previewInterview, proposeSlots, scheduleInterview } from "./availability";
 import { GoogleError } from "./errors";
 import { loadGoogleClientConfig } from "./oauth";
 import { sendApplicationEmail, sendReply } from "./send";
@@ -246,6 +246,11 @@ export const loadFreeSlots = action(z.object({}), async () => {
 });
 
 /** "Add to calendar" for an agreed time: the dashboard's next interview, the calendar, and Interview. */
+export const previewInterviewChange = action(
+  z.object({ applicationId: z.string().min(1), start: z.iso.datetime({ offset: true }).nullable() }),
+  async ({ applicationId, start }) => google(() => previewInterview(applicationId, start ? new Date(start) : null)),
+);
+
 export const confirmInterview = action(
   z.object({ emailId: z.string().min(1), start: z.iso.datetime({ offset: true }), moveToInterview: z.boolean() }),
   async ({ emailId, start, moveToInterview }, { toast }) => {

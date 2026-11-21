@@ -12,6 +12,7 @@ import { StatusControl } from "./status-control";
 vi.mock("@/components/change-status", () => ({ changeStatus: vi.fn(async () => true) }));
 vi.mock("@/components/toast", () => ({ toast: vi.fn(), toastResult: (result: unknown) => result }));
 vi.mock("./actions", () => ({ setInterviewDate: vi.fn(async () => ({ ok: true, data: null })) }));
+vi.mock("@/lib/google/actions", () => ({ previewInterviewChange: vi.fn(async () => ({ ok: true, data: "Update the interview in primary and the dashboard." })) }));
 
 beforeEach(() => {
   vi.mocked(changeStatus).mockClear();
@@ -131,7 +132,9 @@ describe("the next interview's date (E9-9)", () => {
     const dialog = screen.getByRole("dialog", { name: "Next interview" });
     expect(within(dialog).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
     fireEvent.change(within(dialog).getByLabelText("Date and time"), { target: { value: "2026-10-01T14:00" } });
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await user.click(within(dialog).getByRole("button", { name: "Review change" }));
+    expect(setInterviewDate).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Confirm change" }));
     expect(setInterviewDate).toHaveBeenCalledWith({ id: "app-1", at: new Date("2026-10-01T14:00").toISOString() });
   });
 
@@ -147,6 +150,8 @@ describe("the next interview's date (E9-9)", () => {
       new Date(at.getTime() - at.getTimezoneOffset() * 60_000).toISOString().slice(0, 16),
     );
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(setInterviewDate).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Confirm change" }));
     expect(setInterviewDate).toHaveBeenCalledWith({ id: "app-1", at: null });
   });
 

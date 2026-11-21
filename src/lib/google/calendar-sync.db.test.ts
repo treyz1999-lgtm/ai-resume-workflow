@@ -18,7 +18,7 @@ vi.mock("@/lib/time-zone", () => ({ userTimeZone: async () => "Europe/Berlin", l
 
 import { encryptSecret, GOOGLE_TOKEN } from "@/lib/secrets";
 
-import { pullInterviewEvents, scheduleInterview, syncInterviewToCalendar } from "./availability";
+import { previewInterview, pullInterviewEvents, scheduleInterview, syncInterviewToCalendar } from "./availability";
 import { loadCalendar } from "./calendar-data";
 
 const prisma = () => db.client!;
@@ -80,6 +80,24 @@ const setDate = async (iso: string | null) => {
 };
 
 describe("Dossier to Google", () => {
+  it("previews create, move and removal without writing the calendar or dashboard", async () => {
+    const start = new Date("2026-10-22T11:00:00Z");
+    expect(await previewInterview("nw", start)).toContain("Create");
+    expect(events.size).toBe(0);
+    expect((await application()).nextInterviewAt).toBeNull();
+    await scheduleInterview("nw", start);
+    calls = [];
+    const later = new Date("2026-10-23T11:00:00Z");
+    const preview = await previewInterview("nw", later);
+    expect(preview).toContain("Move");
+    expect(preview).toContain("primary");
+    expect(preview).toContain("Europe/Berlin");
+    expect(await previewInterview("nw", null)).toContain("Remove");
+    expect(calls.every(call => call.startsWith("GET "))).toBe(true);
+    expect(events.get("ev1")!.start.dateTime).toBe(start.toISOString());
+    expect((await application()).nextInterviewAt).toEqual(start);
+  });
+
   it("adds the interview, moves it keeping its length, and deletes it with the date", async () => {
     expect(await scheduleInterview("nw", new Date("2026-10-22T11:00:00Z"))).toEqual({ inCalendar: true, eventLink: "https://calendar.google.com/event?eid=ev1" });
     expect(await application()).toMatchObject({ interviewEventId: "ev1", interviewCalendarId: "primary" });
