@@ -72,6 +72,7 @@ export function InboxScreen({
         }
       />
       <div className="flex max-w-[860px] flex-col gap-5 px-10 pb-[72px]">
+        <Link href="/inbox/updates" className="self-start text-sm underline">Application status updates</Link>
         {empty ? (
           <p className={`${card} py-6! text-sm text-muted`}>{connected ? "Nothing yet. Replies to your applications will show up here." : "Nothing here yet."}</p>
         ) : (
