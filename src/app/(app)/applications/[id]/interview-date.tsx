@@ -46,11 +46,11 @@ export function InterviewDate({
   const [shown, show] = useOptimistic(at);
   const [, startTransition] = useTransition();
 
-  const save = (next: Date | null) => {
+  const save = (next: Date | null, expectedProposal: string) => {
     onOpenChange(false);
     startTransition(async () => {
       show(next);
-      toastResult(await setInterviewDate({ id, at: next ? next.toISOString() : null }));
+      toastResult(await setInterviewDate({ id, at: next ? next.toISOString() : null, expectedProposal }));
     });
   };
 
@@ -95,7 +95,7 @@ function InterviewForm({
   id: string;
   initial: Date | null;
   asking: boolean;
-  onSave: (at: Date | null) => void;
+  onSave: (at: Date | null, expectedProposal: string) => void;
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(() => (initial ? localInputValue(initial) : ""));
@@ -110,7 +110,7 @@ function InterviewForm({
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (proposal) onSave(proposal.at);
+        if (proposal) onSave(proposal.at, proposal.description);
         else if (value) preview(new Date(value));
       }}
     >

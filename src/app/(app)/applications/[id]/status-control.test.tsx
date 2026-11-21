@@ -135,7 +135,7 @@ describe("the next interview's date (E9-9)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Review change" }));
     expect(setInterviewDate).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Confirm change" }));
-    expect(setInterviewDate).toHaveBeenCalledWith({ id: "app-1", at: new Date("2026-10-01T14:00").toISOString() });
+    expect(setInterviewDate).toHaveBeenCalledWith({ id: "app-1", at: new Date("2026-10-01T14:00").toISOString(), expectedProposal: expect.any(String) });
   });
 
   it("shows a date that's set, and removes it", async () => {
@@ -152,7 +152,7 @@ describe("the next interview's date (E9-9)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
     expect(setInterviewDate).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Confirm change" }));
-    expect(setInterviewDate).toHaveBeenCalledWith({ id: "app-1", at: null });
+    expect(setInterviewDate).toHaveBeenCalledWith({ id: "app-1", at: null, expectedProposal: expect.any(String) });
   });
 
   it("only shows while in Interview", () => {

@@ -190,6 +190,14 @@ describe("the calendar (E15-5)", () => {
     expect(await confirmInterview({ emailId: "e2", start, moveToInterview: false })).toMatchObject({ ok: false, error: "Link this email to an application first." });
   });
 
+  it("refuses a changed calendar proposal before changing the dashboard or calendar", async () => {
+    const before = await prisma().application.findUniqueOrThrow({ where: { id: "nw" } });
+    const result = await confirmInterview({ emailId: "e1", start: "2026-10-22T12:00:00.000Z", moveToInterview: true, expectedProposal: "An older calendar selection" });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("proposal changed") });
+    expect(await prisma().application.findUniqueOrThrow({ where: { id: "nw" } })).toEqual(before);
+    expect(calls.filter(call => call.url.includes("/events"))).toHaveLength(0);
+  });
+
   it("skips the calendar when that's off", async () => {
     await saveGoogleSettings({ calendarEvents: false, calendarAvailability: false });
     expect(await confirmInterview({ emailId: "e1", start: "2026-10-22T12:00:00.000Z", moveToInterview: false })).toMatchObject({ ok: true, data: { eventLink: null } });

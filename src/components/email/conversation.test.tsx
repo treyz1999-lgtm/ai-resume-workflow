@@ -112,7 +112,7 @@ describe("Conversation (E15-3, E15-4)", () => {
     expect(confirmInterview).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Add interview" }));
     await user.click(screen.getByRole("button", { name: "Confirm interview" }));
-    expect(confirmInterview).toHaveBeenCalledWith({ emailId: "e1", start: "2026-10-22T12:00:00.000Z", moveToInterview: true });
+    expect(confirmInterview).toHaveBeenCalledWith({ emailId: "e1", start: "2026-10-22T12:00:00.000Z", moveToInterview: true, expectedProposal: expect.stringContaining("Create Interview") });
     expect(loadFreeSlots).not.toHaveBeenCalledTimes(2);
   });
 

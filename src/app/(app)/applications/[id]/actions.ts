@@ -11,7 +11,7 @@ import { editsSchema, extractedSchema, matchSchema, trimmedSchema, unitsSchema, 
 import { WRITTEN_EMAIL_UNITS } from "@/lib/application-email";
 import { updateDocuments } from "@/lib/document-units";
 import { DOCUMENT_LABELS } from "@/lib/file-name";
-import { syncInterviewToCalendar } from "@/lib/google/availability";
+import { previewInterview, syncInterviewToCalendar } from "@/lib/google/availability";
 import { GoogleError } from "@/lib/google/errors";
 import { isFrameUnit, withFrame, WRITTEN_FRAME_UNITS } from "@/lib/letter-frame";
 import { saveVersion } from "@/lib/document-versions";
@@ -72,8 +72,10 @@ export const setApplicationTheme = action(z.object({ id: z.string().min(1), them
  * moved or deleted to match.
  */
 export const setInterviewDate = action(
-  z.object({ id: z.string().min(1), at: z.iso.datetime().nullable() }),
-  async ({ id, at }, { toast }) => {
+  z.object({ id: z.string().min(1), at: z.iso.datetime().nullable(), expectedProposal: z.string().optional() }),
+  async ({ id, at, expectedProposal }, { toast }) => {
+    if (expectedProposal !== undefined && expectedProposal !== await previewInterview(id, at ? new Date(at) : null))
+      throw new ActionError("The calendar proposal changed. Review it again before confirming.");
     const { count } = await prisma.application.updateMany({ where: { id }, data: { nextInterviewAt: at ? new Date(at) : null } });
     if (count === 0) throw new ActionError(GONE);
     refresh(id);

@@ -204,7 +204,7 @@ function InterviewConfirm({ email, timeZone }: { email: EmailView; timeZone?: st
   });
   const confirm = () =>
     startTransition(async () => {
-      const result = await confirmInterview({ emailId: email.id, start: email.confirmedAt!.toISOString(), moveToInterview: move });
+      const result = await confirmInterview({ emailId: email.id, start: email.confirmedAt!.toISOString(), moveToInterview: move, expectedProposal: proposal! });
       if (!result.ok) return toast(result.error);
       toastWithUndo(result.toast, result.data.eventId);
       router.refresh();

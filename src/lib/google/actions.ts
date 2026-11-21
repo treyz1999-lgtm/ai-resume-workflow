@@ -252,10 +252,12 @@ export const previewInterviewChange = action(
 );
 
 export const confirmInterview = action(
-  z.object({ emailId: z.string().min(1), start: z.iso.datetime({ offset: true }), moveToInterview: z.boolean() }),
-  async ({ emailId, start, moveToInterview }, { toast }) => {
+  z.object({ emailId: z.string().min(1), start: z.iso.datetime({ offset: true }), moveToInterview: z.boolean(), expectedProposal: z.string().optional() }),
+  async ({ emailId, start, moveToInterview, expectedProposal }, { toast }) => {
     const email = await prisma.emailMessage.findUnique({ where: { id: emailId }, select: { applicationId: true } });
     if (!email?.applicationId) throw new ActionError("Link this email to an application first.");
+    if (expectedProposal !== undefined && expectedProposal !== await google(() => previewInterview(email.applicationId!, new Date(start))))
+      throw new ActionError("The calendar proposal changed. Review it again before confirming.");
     const { eventLink } = await google(() => scheduleInterview(email.applicationId!, new Date(start)));
     let eventId: string | null = null;
     if (moveToInterview) {
