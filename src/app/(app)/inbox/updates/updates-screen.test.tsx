@@ -59,3 +59,25 @@ it("offers Google setup when disconnected and links a recorded application", () 
   expect(screen.getByRole("link", { name: "View application" })).toHaveAttribute("href", "/applications/first");
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
 });
+
+it("lets the user choose an existing attempt for an unmatched finding and preserves a rejected resolution", async () => {
+  vi.mocked(resolveFinding).mockResolvedValue({ ok: false, error: "A newer status is already recorded." });
+  const user = userEvent.setup();
+  render(<UpdatesScreen {...props} findings={[{ ...finding, result: "NO_MATCH", candidates: [] }]} />);
+  await user.selectOptions(screen.getByRole("combobox"), "first");
+  await user.click(screen.getByRole("button", { name: "Apply update" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("A newer status is already recorded.");
+  expect(screen.getByText("No matching application")).toBeVisible();
+});
+
+it("shows recoverable transport failures without hiding findings", async () => {
+  vi.mocked(checkUpdates).mockRejectedValue(new Error("offline"));
+  vi.mocked(resolveFinding).mockRejectedValue(new Error("offline"));
+  const user = userEvent.setup();
+  render(<UpdatesScreen {...props} />);
+  await user.click(screen.getByRole("button", { name: "Check updates" }));
+  expect(await screen.findByText(/Saved findings are shown below/)).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Dismiss" }));
+  expect(await screen.findByText(/Could not confirm this update/)).toBeVisible();
+  expect(screen.getByText("An interview was offered.")).toBeVisible();
+});
