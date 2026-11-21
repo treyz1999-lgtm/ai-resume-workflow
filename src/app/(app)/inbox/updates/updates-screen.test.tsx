@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { UpdatesScreen, type StatusFindingView } from "./updates-screen";
 import { checkUpdates, resolveFinding } from "./actions";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), usePathname: () => "/inbox/updates" }));
 vi.mock("./actions", () => ({ checkUpdates: vi.fn(), resolveFinding: vi.fn() }));
 const choices = [
   { id: "first", company: "Example Labs", role: "Engineer", sentAt: "2026-11-01T00:00:00.000Z" },
@@ -18,7 +18,7 @@ const finding: StatusFindingView = {
 const props = { findings: [finding], applications: choices, connected: true, timeZone: "America/Phoenix" };
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(checkUpdates).mockResolvedValue({ ok: true, data: { reviewed: 5, included: 2, updated: 1, review: 1 } });
+  vi.mocked(checkUpdates).mockResolvedValue({ ok: true, data: { reviewed: 5, included: 2, updated: 1, review: 1, warnings: ["A thread could not be read. Retry the check."] } });
   vi.mocked(resolveFinding).mockResolvedValue({ ok: true, data: null });
 });
 

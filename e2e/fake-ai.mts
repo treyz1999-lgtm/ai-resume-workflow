@@ -43,6 +43,15 @@ let emails = 0;
 let last: Message[] = [];
 
 const answers: Record<string, (messages: Message[]) => unknown> = {
+  email_status: messages => {
+    const prompt = messages.find(message => message.role === "user")!.content;
+    const input = JSON.parse(prompt.slice(prompt.indexOf("\n\n{") + 2)) as { targetId: string; messages: {id: string; subject: string; text: string}[] };
+    const mail = input.messages.find(message => message.id === input.targetId)!;
+    const relevant = mail.subject.includes("Fictional Harbor");
+    return { kind: relevant ? "INTERVIEW" : "IGNORE", company: relevant ? "Fictional Harbor" : "",
+      role: relevant ? "Data Analyst" : "", summary: "Interview invitation.", quote: relevant ? "Please schedule an interview." : "",
+      companyQuote: relevant ? "Fictional Harbor" : "", roleQuote: relevant ? "Data Analyst" : "", confident: true };
+  },
   tailoring_plan: messages => {
     const { kb, eligible } = tailoringInput(messages);
     return { reviewed: kb.projects.map(p => ({ id: p.id, reason: "Reviewed the validated project evidence." })),

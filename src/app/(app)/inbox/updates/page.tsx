@@ -21,6 +21,6 @@ export default async function UpdatesPage() {
     findings={findings.map(finding => ({ ...finding, emailDate: finding.emailDate.toISOString() }))}
     applications={applications.map(application => ({ ...application, sentAt: application.sentAt?.toISOString() ?? null }))}
     connected={connection.status === "connected" && connection.canRead && settings.gmailRead}
-    timeZone={timeZone}
+    timeZone={timeZone ?? "UTC"}
   />;
 }

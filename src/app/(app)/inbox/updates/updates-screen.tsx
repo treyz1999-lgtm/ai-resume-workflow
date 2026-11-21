@@ -75,10 +75,12 @@ export function UpdatesScreen({ findings, applications, connected, timeZone }: {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
+  const [warnings, setWarnings] = useState<string[]>([]);
   function check() {
     start(async () => {
       try {
         const result = await checkUpdates({});
+        setWarnings(result.ok ? result.data.warnings : []);
         setMessage(result.ok
           ? `Reviewed ${result.data.reviewed} messages · ${result.data.included} findings · ${result.data.updated} applications updated · ${result.data.review} need review.`
           : result.error);
@@ -94,8 +96,9 @@ export function UpdatesScreen({ findings, applications, connected, timeZone }: {
       <section className={card + " flex flex-wrap items-center gap-4"}>
         {connected ? <Button disabled={busy} onClick={check}>{busy ? "Checking updates…" : "Check updates"}</Button> :
           <Link className={buttonClassName("primary")} href="/settings?section=google">Connect Gmail</Link>}
-        <p className="text-sm text-muted">Each check covers the last seven calendar days through today. Previously recorded findings remain in this report.</p>
+        <p className="text-sm text-muted">Each check covers seven calendar days ago through today, inclusive. Previously recorded findings remain in this report.</p>
         {message && <p className="w-full" role="status">{message}</p>}
+        {warnings.map((warning, index) => <p className="w-full" role="alert" key={index}>{warning}</p>)}
       </section>
       <section className={card + " overflow-x-auto"}>
         {findings.length ? <table className="w-full text-left text-sm">

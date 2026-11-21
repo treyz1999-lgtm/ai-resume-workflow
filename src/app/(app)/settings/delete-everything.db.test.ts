@@ -65,7 +65,20 @@ describe("deleteEverything (E10-8)", () => {
       identityKey: "fictional", occurrenceKey: "fictional:1", source: "TEXT", externalId: "fixture",
       jd: "Fictional role", postingEvidence: {},
     } });
-    await prisma().tailoringSelection.create({ data: { postingId: discovered.id } });
+    const run = await prisma().tailoringSelection.create({ data: { postingId: discovered.id, status: "SUBMITTED" } });
+    const revision = await prisma().tailoringRevision.create({ data: {
+      runId: run.id, kind: "resume", format: "latex", source: "fixture", pdf: new Uint8Array(),
+      preview: new Uint8Array(), text: "", verification: {}, evidence: [],
+    } });
+    const tracked = await prisma().application.create({ data: { company: "Fictional" } });
+    await prisma().tailoringSubmission.create({ data: {
+      runId: run.id, applicationId: tracked.id, resumeRevisionId: revision.id,
+      submittedAt: new Date(), score: 75, scoringMethod: "v5-evidence@1",
+    } });
+    await prisma().emailStatusFinding.create({ data: {
+      messageId: "fictional-mail", threadId: "fictional-thread", emailDate: new Date(),
+      company: "Fictional", role: "Engineer", summary: "Interview", kind: "INTERVIEW", evidence: {}, candidates: [],
+    } });
     // A saved posting from Find jobs goes too (E14-9).
     await prisma().posting.create({ data: { source: "JSEARCH", externalId: "job-1", savedAt: new Date() } });
     await prisma().postingSearch.create({ data: { source: "JSEARCH", query: {}, postings: [] } });
@@ -80,6 +93,8 @@ describe("deleteEverything (E10-8)", () => {
     await prisma().setting.create({ data: { key: "connectorEnabledAt", value: "2026-10-23T09:00:00.000Z" } });
     await expect(deleteEverything({ confirm: "DELETE" })).rejects.toThrow("NEXT_REDIRECT");
     expect(redirected.to).toBe("/");
+    expect(await prisma().emailStatusFinding.count()).toBe(0);
+    expect(await prisma().tailoringSubmission.count()).toBe(0);
     expect(await Promise.all([prisma().discoveryControl.count(), prisma().discoveryScan.count(), prisma().discoveryPosting.count(), prisma().tailoringSelection.count()])).toEqual([0, 0, 0, 0]);
     const counts = await Promise.all([
       prisma().posting.count(),

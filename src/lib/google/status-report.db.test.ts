@@ -5,9 +5,11 @@ import { classifyStatus } from "./status-report-analysis";
 import { checkStatusUpdates, resolveStatusFinding } from "./status-report";
 import type { StatusClassification } from "./status-report-task";
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/db")).createTestClient() }));
-vi.mock("./account", () => ({ googleFetch: vi.fn() }));
+vi.mock("./account", () => ({ googleFetch: vi.fn(), googleConnection: async () => ({ status: "connected", canRead: true }) }));
+vi.mock("@/lib/settings-data", () => ({ loadSettings: async () => ({ gmailRead: true }) }));
 vi.mock("./status-report-analysis", () => ({ classifyStatus: vi.fn() }));
 vi.mock("@/lib/time-zone", () => ({ lastKnownTimeZone: async () => "America/Phoenix" }));
+vi.mock("./endpoints", () => ({ googleUrl: (_host: string, path: string) => "https://google.fixture" + path }));
 const db = createTestClient();
 const now = new Date();
 const yesterday = new Date(now.getTime() - 86_400_000);
@@ -38,6 +40,15 @@ it("applies one traceable chronological update and deduplicates repeated checks"
   expect(await db.statusEvent.count()).toBe(1);
   expect(await checkStatusUpdates()).toMatchObject({ included: 0 });
   expect(await db.statusEvent.count()).toBe(1);
+});
+it("rechecks reapplications created while the model is reading the message", async () => {
+  await application("one");
+  vi.mocked(classifyStatus).mockImplementationOnce(async () => {
+    await application("reapplication");
+    return outcome;
+  });
+  expect(await checkStatusUpdates()).toMatchObject({ updated: 0, review: 1 });
+  expect((await db.emailStatusFinding.findFirstOrThrow()).candidates).toHaveLength(2);
 });
 it("requires review for reapplications and rejects selection of an unsent attempt", async () => {
   await application("one"); await application("two");
@@ -75,4 +86,38 @@ it("reports partial failures and reads complete MIME bodies before classificatio
   expect(report).toMatchObject({ updated: 1, included: 1 });
   expect(report.warnings).toHaveLength(1);
   expect(vi.mocked(classifyStatus).mock.calls[0][0].messages[0].text).toBe(text);
+});
+
+it.each([
+  ["REJECTION", "REJECTED"],
+  ["ASSESSMENT", "INTERVIEW"],
+  ["OFFER", "OFFER"],
+  ["WITHDRAWAL", "DECLINED"],
+  ["PROGRESS", "SENT"],
+] as const)("records %s with message traceability and the appropriate tracker status", async (kind, status) => {
+  await application("one");
+  vi.mocked(classifyStatus).mockResolvedValue({ ...outcome, kind });
+  await checkStatusUpdates();
+  expect((await db.application.findUniqueOrThrow({ where: { id: "one" } })).status).toBe(status);
+  expect(await db.emailStatusFinding.findFirstOrThrow()).toMatchObject({ messageId: "mail", applicationId: "one", kind });
+});
+
+it("excludes receipts and quoted older outcomes and preserves distinct repost notifications", async () => {
+  await application("one");
+  vi.mocked(classifyStatus).mockResolvedValueOnce({ ...outcome, kind: "IGNORE" });
+  expect(await checkStatusUpdates()).toMatchObject({ included: 0, updated: 0 });
+  vi.mocked(googleFetch).mockImplementation(async (_group, url) => String(url).includes("/threads/")
+    ? { messages: [message("quoted", yesterday, "Thanks.\nOn Tuesday wrote:\n" + text)] }
+    : { messages: [{ threadId: "thread" }] });
+  const rejected = await checkStatusUpdates();
+  expect(rejected.warnings).toHaveLength(1);
+  expect(await db.emailStatusFinding.count()).toBe(0);
+  vi.mocked(googleFetch).mockImplementation(async (_group, url) => String(url).includes("/threads/")
+    ? { messages: [message("original")] } : { messages: [{ threadId: "thread" }] });
+  await checkStatusUpdates();
+  vi.mocked(googleFetch).mockImplementation(async (_group, url) => String(url).includes("/threads/")
+    ? { messages: [{ ...message("reposted", now), threadId: "new-thread" }] }
+    : { messages: [{ threadId: "new-thread" }] });
+  await checkStatusUpdates();
+  expect(await db.emailStatusFinding.count()).toBe(2);
 });

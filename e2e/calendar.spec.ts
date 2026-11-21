@@ -55,7 +55,8 @@ test("shows interviews and Google's events, and keeps interviews in step both wa
   await page.goto(`/applications/${northstar.id}`);
   await page.getByRole("button", { name: /^Next interview: .*\. Change$/ }).click();
   await page.getByRole("dialog").getByLabel("Date and time").fill(`${day}T14:00`);
-  await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Review change" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm change" }).click();
   await expect(page.getByText("Interview date saved, in your calendar too.")).toBeVisible();
   await expect.poll(async () => (await interview()).interviewEventId).not.toBeNull();
   const added = (await fakeGoogle()).events.find((event) => event.extendedProperties?.private?.dossierApplication === northstar.id)!;
@@ -78,13 +79,15 @@ test("shows interviews and Google's events, and keeps interviews in step both wa
   await page.goto(`/applications/${northstar.id}`);
   await page.getByRole("button", { name: /^Next interview: .*\. Change$/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Remove" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm change" }).click();
   await expect(page.getByText("Interview date removed, from your calendar too.")).toBeVisible();
   await expect.poll(async () => (await fakeGoogle()).events.some((event) => event.id === added.id)).toBe(false);
 
   // Deleted in Google: an interview set again, then deleted there, loses its date.
   await page.getByRole("button", { name: "Add the interview date" }).click();
   await page.getByRole("dialog").getByLabel("Date and time").fill(`${day}T09:00`);
-  await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Review change" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm change" }).click();
   await expect.poll(async () => (await interview()).interviewEventId).not.toBeNull();
   await inFakeCalendar("DELETE", (await interview()).interviewEventId!);
   await page.reload();

@@ -75,7 +75,8 @@ test("interview dates show in Worth a look, and moving to Interview asks for one
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T10:30`;
   });
   await dialog.getByLabel("Date and time").fill(later);
-  await dialog.getByRole("button", { name: "Save" }).click();
+  await dialog.getByRole("button", { name: "Review change" }).click();
+  await dialog.getByRole("button", { name: "Confirm change" }).click();
   await expect(page.getByText("Interview date saved. It'll show on your dashboard.")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Next interview: .*, 10:30\. Change$/ })).toBeVisible();
 

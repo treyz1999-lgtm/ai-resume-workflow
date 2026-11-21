@@ -98,6 +98,12 @@ createServer(async (request, response) => {
   if (path === "/health") return send(response, 200, { ok: true });
   // For specs: what the app sent and did.
   if (path === "/state") return send(response, 200, { sent, events: [...events.values()].filter((event) => event.status !== "cancelled"), revoked, granted });
+  if (path === "/test/mail" && request.method === "POST") {
+    const input = JSON.parse(await read(request)) as { id: string; threadId: string; subject: string; text: string };
+    deliver({ id: input.id, threadId: input.threadId, labels: ["INBOX"],
+      headers: { From: "careers@fictional.example", To: ACCOUNT, Subject: input.subject }, text: input.text });
+    return send(response, 200, { ok: true });
+  }
 
   // For specs: changes made "in Google Calendar".
   const testEvent = /^\/test\/events(?:\/([^/]+))?$/.exec(path);
@@ -177,6 +183,10 @@ createServer(async (request, response) => {
   }
   const message = path.startsWith(`${gmail}/messages/`) && mailbox.find((mail) => mail.id === decodeURIComponent(path.slice(`${gmail}/messages/`.length)));
   if (message) return send(response, 200, asGmail(message));
+  if (path.startsWith(`${gmail}/threads/`)) {
+    const id = decodeURIComponent(path.slice(`${gmail}/threads/`.length));
+    return send(response, 200, { id, messages: mailbox.filter(mail => mail.threadId === id).map(asGmail) });
+  }
 
   // Calendar: nothing booked, and events are kept.
   if (path === "/www/calendar/v3/freeBusy" && request.method === "POST") {

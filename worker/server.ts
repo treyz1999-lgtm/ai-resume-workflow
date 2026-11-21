@@ -10,6 +10,7 @@ import { ExecutionError } from "./rpc";
 import { CodexAdapter } from "./codex";
 import { handleTailoringAI } from "./tailoring-ai";
 import { handleTailoringRender } from "./tailoring-render";
+import { handleStatusReport } from "./status-report";
 import { compileSample, compileDocument, artifactPath } from "./latex";
 import { renderV5Resume, renderCoverLetter, fictionalResume, fictionalCoverLetter } from "../src/lib/templates/v5";
 import { ExecutionStore, view } from "./store";
@@ -54,7 +55,7 @@ const server = createServer(async (request, response) => {
   const path = request.url ?? "";
   const method = request.method;
   try {
-    if (await handleTailoringAI(request, response) || await handleTailoringRender(request, response)) return;
+      if (await handleTailoringAI(request, response) || await handleTailoringRender(request, response) || await handleStatusReport(request, response)) return;
     if (method === "POST" && path === "/discovery/analyze") {
       const input = z.object({ posting: discoveryInputSchema, kb: z.unknown(), model: z.string().max(160) }).strict().parse(await body(request, DISCOVERY_CONTEXT_MAX_BYTES));
       const prompt = discoveryPrompt(input.posting, input.kb);

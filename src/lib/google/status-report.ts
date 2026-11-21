@@ -5,7 +5,8 @@ import { ActionError } from "@/lib/action";
 import { prisma } from "@/lib/prisma";
 import { advance } from "@/lib/status";
 import { lastKnownTimeZone } from "@/lib/time-zone";
-import { googleFetch } from "./account";
+import { loadSettings } from "@/lib/settings-data";
+import { googleConnection, googleFetch } from "./account";
 import { googleUrl } from "./endpoints";
 import { readMessage, type ReadMail } from "./gmail";
 import { stripQuoted } from "./mime";
@@ -39,8 +40,8 @@ async function threadMessages(threadId: string): Promise<ReadMail[]> {
   }
   return messages.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
-async function candidates(): Promise<StatusCandidate[]> {
-  const apps = await prisma.application.findMany({
+async function candidates(db: Pick<Prisma.TransactionClient, "application"> = prisma): Promise<StatusCandidate[]> {
+  const apps = await db.application.findMany({
     where: { awaitingReview: false, sentAt: { not: null } },
     select: { id: true, company: true, role: true, sentAt: true },
   });
@@ -62,13 +63,16 @@ async function applyFinding(tx: Tx, findingId: string, applicationId: string) {
   const tracker = app.trackerCsv && typeof app.trackerCsv === "object" && !Array.isArray(app.trackerCsv) ? app.trackerCsv : {};
   const evidence = finding.evidence as { timeZone?: string };
   const date = localDay(finding.emailDate, evidence.timeZone ?? "UTC");
+  const trackerChanged = tracker.response_date !== date ||
+    (finding.kind === "REJECTION" && tracker.rejection_date !== date) ||
+    (finding.kind === "ASSESSMENT" && tracker.interview_stage !== "Assessment");
   await tx.application.update({ where: { id: app.id }, data: {
     ...change?.update,
     trackerCsv: { ...tracker, response_date: date, ...(finding.kind === "REJECTION" ? { rejection_date: date } : {}),
       ...(finding.kind === "ASSESSMENT" ? { interview_stage: "Assessment" } : {}) },
   } });
   if (change) await tx.statusEvent.create({ data: { applicationId, ...change.event } });
-  await tx.emailStatusFinding.update({ where: { id: findingId }, data: { applicationId, result: change ? "APPLIED" : "UNCHANGED" } });
+  await tx.emailStatusFinding.update({ where: { id: findingId }, data: { applicationId, result: change || trackerChanged ? "APPLIED" : "UNCHANGED" } });
 }
 
 export async function resolveStatusFinding(id: string, applicationId: string | null) {
@@ -94,6 +98,10 @@ export function checkStatusUpdates(): Promise<StatusCheckSummary> {
   return active;
 }
 async function runCheck(): Promise<StatusCheckSummary> {
+  const [connection, settings] = await Promise.all([googleConnection(), loadSettings()]);
+  if (connection.status !== "connected" || !connection.canRead || !settings.gmailRead) {
+    throw new ActionError("Connect Google with Gmail read access and enable inbox reading in Settings before checking updates.");
+  }
   const summary: StatusCheckSummary = { reviewed: 0, included: 0, updated: 0, review: 0, warnings: [] };
   const timeZone = await lastKnownTimeZone();
   const window = reportingWindow(new Date(), timeZone);
@@ -124,7 +132,6 @@ async function runCheck(): Promise<StatusCheckSummary> {
     } catch { summary.warnings.push("A thread could not be read in full. Retry the check to include it."); }
   }
   contexts.sort((a, b) => a.mail.date.getTime() - b.mail.date.getTime());
-  const apps = await candidates();
   for (const { mail, context } of contexts) {
     if (await prisma.emailStatusFinding.findUnique({ where: { messageId: mail.id } })) continue;
     try {
@@ -132,14 +139,15 @@ async function runCheck(): Promise<StatusCheckSummary> {
       const result = await classifyStatus(context);
       validateStatusEvidence(result, context);
       if (result.kind === "IGNORE") continue;
-      const matches = matchingAttempts(result, apps, mail.date);
-      const fingerprint = createHash("sha256").update(JSON.stringify([result.company.toLowerCase(), result.role.toLowerCase(), result.kind, stripQuoted(mail.text).replace(/\s+/g, " ").trim()])).digest("hex");
+      const fingerprint = createHash("sha256").update(JSON.stringify([mail.threadId, localDay(mail.date, timeZone),
+        result.company.toLowerCase(), result.role.toLowerCase(), result.kind, stripQuoted(mail.text).replace(/\s+/g, " ").trim()])).digest("hex");
       const duplicate = await prisma.emailStatusFinding.findFirst({ where: { evidence: { path: ["fingerprint"], equals: fingerprint } } });
       if (duplicate) continue;
       const saved = await prisma.$transaction(async tx => {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(7160001)`;
         if (await tx.emailStatusFinding.findUnique({ where: { messageId: mail.id } })) return null;
         if (await tx.emailStatusFinding.findFirst({ where: { evidence: { path: ["fingerprint"], equals: fingerprint } } })) return null;
+        const matches = matchingAttempts(result, await candidates(tx), mail.date);
         const finding = await tx.emailStatusFinding.create({ data: {
           messageId: mail.id, threadId: mail.threadId, emailDate: mail.date, company: result.company, role: result.role,
           summary: result.summary, kind: result.kind, candidates: matches,

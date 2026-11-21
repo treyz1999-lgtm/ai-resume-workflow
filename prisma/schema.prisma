@@ -562,6 +562,7 @@ enum FunnelStage {
 }
 
 model Application {
+  statusFindings      EmailStatusFinding[]
   submission          TailoringSubmission?
   trackerCsv          Json?
   id                  String            @id @default(cuid())
@@ -1018,6 +1019,7 @@ model EmailStatusFinding {
   evidence Json
   candidates Json
   applicationId String?
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   result String @default("REVIEW")
   createdAt DateTime @default(now())
 

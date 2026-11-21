@@ -232,6 +232,8 @@ export const deleteEverything = action(z.object({ confirm: z.literal("DELETE") }
   await prisma.$transaction(async (tx) => {
     await tx.job.deleteMany();
     await tx.executionRun.deleteMany();
+    await tx.emailStatusFinding.deleteMany();
+    await tx.tailoringSubmission.deleteMany();
     await tx.tailoringSelection.deleteMany();
     await tx.tailoringControl.deleteMany();
     await tx.discoveryPosting.deleteMany();
