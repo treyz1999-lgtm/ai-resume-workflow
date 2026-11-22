@@ -34,7 +34,7 @@ services:
       DOSSIER_PASSWORD: ${DOSSIER_PASSWORD:?Set DOSSIER_PASSWORD in .env to a hash from hash-password}
       DOSSIER_SECRET: ${DOSSIER_SECRET:?Set DOSSIER_SECRET in .env}
       DOSSIER_BACKUP_RETENTION_DAYS: ${DOSSIER_BACKUP_RETENTION_DAYS:-}
-      # Your time zone, e.g. Europe/Berlin: nightly backups run at 03:00 in it.
+      # Local timezone for application schedules and date windows.
       TZ: ${TZ:-}
       DOSSIER_AI_PROVIDER: ${DOSSIER_AI_PROVIDER:-}
       DOSSIER_AI_URL: ${DOSSIER_AI_URL:-}
@@ -58,6 +58,7 @@ services:
       - "127.0.0.1:${DOSSIER_PORT:-3000}:3000"
     volumes:
       - appdata:/data
+      - ./backups:/data/backups
     # Room for Chromium, which prints the PDFs.
     mem_limit: 1g
     # Lets http://host.docker.internal reach Ollama (:11434) or LM Studio

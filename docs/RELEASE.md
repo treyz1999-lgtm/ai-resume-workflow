@@ -1,0 +1,36 @@
+# Release, backup and recovery
+
+M7 is in progress. Do not treat the current branch as an approved/tagged V1 release. The coordinator records final clean-install, restore, regression and accessibility evidence in the milestone review. Only user approval authorizes the release push and tag.
+
+## Backup policy
+
+The M7 full-archive contract uses checksummed version-1 JSON and `/api/workflow-backups`. The host-visible `backups/` directory is mounted at `/data/backups`. Backups contain profile/KB history, architecture assets, document references and generated revisions/sources/reports, workflow/discovery/tracker history and non-secret settings. They exclude API keys, Google authentication tokens and the separate Codex authentication volume. Archives still contain sensitive personal content and belong outside Git.
+
+The default automatic interval is **ten newly ready application preparations**, retaining **ten automatic archives**. Manual backups remain until explicitly deleted. Retries/revisions must not inflate the completed-preparation count. Backup frequency is configurable. Automatic archives are not hourly backups and are not triggered by discovery alone.
+
+Use the manual backup control before upgrades or data migration. Keep a copy on another trusted storage device if recovery from disk failure matters: a folder on the same disk does not protect against that disk failing. Do not copy a running PostgreSQL volume as a substitute for a validated application archive.
+
+The restore UI, exact operational steps and measured fresh-volume restore result will be finalized with the integrated M7 engine. Until that gate passes, do not rely on this document as evidence that a backup was successfully restored. Legacy Dossier imports must remain available through a version-aware importer; tracker CSV is a separate interchange format and does not preserve the full application.
+
+## Upgrade procedure
+
+1. Create a manual archive and verify it is present in the host backup directory. Preserve the private `.env` separately; never include credentials in a shareable archive.
+2. Stop the current installation using its existing Compose file/project. Do not delete volumes.
+3. Check out the approved release and review its migration notes. Build/start with `docker compose -f compose.production.yml up -d --build`.
+4. Confirm app/worker health, profile and document access. Reconnect integrations if restored into a new installation.
+
+Schema migrations run during startup. Rolling source code back is not automatically a database rollback. Use a validated archive in fresh volumes for recovery, preserving the original volumes until the restored installation has been checked.
+
+## Evidence and contribution claims
+
+| Milestone | Recorded acceptance |
+| --- | --- |
+| [M1](M1_REVIEW.md) | Real ChatGPT-authenticated structured task, auth surviving restart; local PDF sample; fixture cancellation/quota tests |
+| [M2](M2_REVIEW.md) | KB history, reference upload/download, SWE/Data/letter compilation; 1,730 tests passed |
+| [M3](M3_REVIEW.md) | Scheduling, dedup/repost and explicit selection; real Codex fictional coverage request; 1,788 tests passed |
+| [M4](M4_REVIEW.md) | Sequential preparation, SWE/Data/theme and letter cases, real fictional Codex/Data PDF run; 1,823 tests passed |
+| [M5](M5_REVIEW.md) | Exact submission history, revisions, tracker CSV and dashboard consistency; 1,856 tests passed |
+| [M6](M6_REVIEW.md) | Fictional Gmail/Calendar integration, conservative matching and chronology; 1,882 tests passed |
+| M7 | In progress: clean install, full archive restore, regression and final review pending |
+
+Counts reflect those historical runs, not cumulative independent tests or a promise that every model/provider works. Live Google/paid source tests were not required for fixture acceptance. Screenshots and generated sample artifacts must use fictional records. Consult [UPSTREAM.md](UPSTREAM.md) to distinguish inherited functionality from fork contributions.

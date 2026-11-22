@@ -1,28 +1,35 @@
-# Upstream provenance
+# Upstream provenance and fork contributions
 
-AI Resume Workflow is a derivative of [AienTech/dossier](https://github.com/AienTech/dossier).
+AI Resume Workflow is a derivative of [AienTech/dossier](https://github.com/AienTech/dossier), published as [treyz1999-lgtm/ai-resume-workflow](https://github.com/treyz1999-lgtm/ai-resume-workflow).
 
 | Item | Baseline |
 | --- | --- |
 | Upstream repository | `https://github.com/AienTech/dossier.git` |
 | Pinned commit | `3271c8b2900082e0caa1ed42765b71d28134c0c1` |
 | Upstream version | Dossier 1.9.1 |
-| Fork working name | AI Resume Workflow |
-| Intended fork repository name | `ai-resume-workflow` |
+| Fork name | AI Resume Workflow |
 | License | AGPL-3.0-only; see [LICENSE](../LICENSE) |
 
-Preserve upstream Git history, copyright notices, and license. The unmodified upstream README is archived in [UPSTREAM_README.md](UPSTREAM_README.md); its installation links, images, claims, and relative links describe upstream, not this fork. Consult the fork's [README](../README.md) for local setup and current status.
-
-The intended fork lives under the user's authenticated GitHub account. M0 begins as a local checkout with an `upstream` remote. Creating the remote fork, configuring `origin`, and pushing the baseline require the user's M0 review approval. Do not imply that a remote repository exists before creation succeeds.
+Upstream Git history, copyright notices and license are preserved. The unmodified [upstream README](UPSTREAM_README.md) documents upstream authorship and capabilities; its installation links and release claims are not this fork's current instructions. Use the fork [README](../README.md).
 
 ## Contribution boundaries
 
-Dossier provides the existing Next.js application, structured profile, resume themes, job providers, startup discovery, job agent, document editing/history, tracking views, Gmail/Calendar features, provider adapters, and tests.
+| Retained from Dossier | Added or substantially adapted in this fork |
+| --- | --- |
+| Next.js/React/TypeScript, Prisma/PostgreSQL, existing components and tests | Internal execution worker, durable claims/leases/checkpoints and ChatGPT-authenticated Codex app-server |
+| Structured profile and skill/experience/project editors | Complete versioned profile-derived KB, evidence/ownership context and project architecture notes |
+| Twelve resume themes, document editing/history and PDF rendering | V5 SWE/Data LaTeX composition, full-inventory exact-five planning, evidence checks, PDF inspection and sequential preparation |
+| Job source adapters, startup discovery and search settings | Scheduled independent discovery, occurrence/repost handling, explicit tailoring selection and separate coverage scores |
+| Application board, table, dashboard and notes | Exact submitted-revision/score freezing, reapplication attempts, review queue and tracker CSV |
+| Gmail/Calendar and model-provider integrations | Evidence-based status review, ambiguous reapplication handling, confirmed Calendar effects and no subscription-to-API fallback |
+| Existing export/import foundations | M7 versioned full workflow archives, secret exclusion, preparation-count backups and fresh-install recovery (release acceptance in progress) |
 
-The approved V1 adaptation adds a profile-derived knowledge base, V5 selection and composition rules, subscription-authenticated Codex execution, sequential tailoring, verified local LaTeX output, repost-aware application history, submitted-document scoring, and local backup recovery. These are planned capabilities until their milestones pass review. Record actual implementation and verification in milestone reports rather than presenting the entire plan as delivered.
+These boundaries support portfolio descriptions without presenting upstream work as original. Use measured acceptance from [release evidence](RELEASE.md), identify fixture versus live checks, and label M7 unfinished until its gate passes. Personal records and external V5 masters are not distributed with the fork.
 
-The existing V5 LaTeX master uses pdfLaTeX. SWE and Data are composition variants of the same formatting master. M2 will import reusable, parameterized template assets with their original MIT license and attribution, including Jake Gutierrez's template attribution. Never copy personal contact information, work history, historical application content, or absolute personal source paths into the public repository. Preserve the existing external masters unchanged.
+## LaTeX attribution
+
+The V5 renderer in `src/lib/templates/v5.ts` adapts Jake Gutierrez's MIT-licensed resume layout, based on sb2nov/resume. The original MIT notice is retained in [templates/v5/LICENSE](../templates/v5/LICENSE). SWE and Data share the pdfLaTeX formatting master, with per-variant composition and work-history inclusion. The reusable formatting is parameterized; personal contact, employer, date and project content is input data. See [template provenance](../templates/v5/README.md). Existing external source masters remain unchanged.
 
 ## Updating upstream
 
-Fetch upstream explicitly and review changes against the pinned baseline before integrating. Do not automatically replace this fork's runtime with the upstream container image or advertise upstream releases as fork upgrades. Keep the provenance of later upstream merges in Git and milestone notes.
+Fetch upstream explicitly and review changes against the pinned baseline before integrating. Never silently replace this fork's image with upstream's or present upstream release prompts as fork upgrades. Record later upstream merges in Git and release notes. Upstream telemetry and update prompts are disabled. Release pushes and tags remain coordinator-only after the user's milestone approval.
