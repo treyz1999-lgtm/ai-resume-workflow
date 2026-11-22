@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Bounded architecture image plus full Unicode project context can exceed 1 MB.
-  experimental: { serverActions: { bodySizeLimit: "2mb" } },
+  experimental: { serverActions: { bodySizeLimit: "2mb" }, proxyClientMaxBodySize: "128mb" },
   // The production image runs .next/standalone: the server and only the files
   // it needs (E12-1).
   output: "standalone",

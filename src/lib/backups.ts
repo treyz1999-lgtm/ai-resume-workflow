@@ -1,16 +1,17 @@
 import "server-only";
 
-import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, stat, writeFile, rename } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 
-import { buildExport } from "@/lib/data-export";
+import { exportWorkflowArchive } from "@/lib/workflow-archive";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
 // Backups (E10-6, E10-7): exports written to DOSSIER_DATA_DIR/backups. They
 // never hold the API key in plain text.
 
-export type BackupReason = "before-import" | "nightly";
+export type BackupReason = "before-import" | "nightly" | "manual" | "preparations";
 
 export const backupsDir = () => path.join(env.DOSSIER_DATA_DIR, "backups");
 
@@ -25,10 +26,14 @@ export function backupFileName(reason: BackupReason, now: Date): string {
 
 /** Writes an export of everything to the backups folder; returns the file's name. */
 export async function writeBackup(reason: BackupReason, now = new Date()): Promise<string> {
-  const data = await buildExport(prisma, { now });
+  const data = await exportWorkflowArchive(prisma);
   await mkdir(backupsDir(), { recursive: true });
-  const name = backupFileName(reason, now);
-  await writeFile(path.join(backupsDir(), name), JSON.stringify(data, null, 2));
+  const name = backupFileName(reason, now).replace(".json", "-" + randomUUID() + ".json");
+  const temporary = path.join(backupsDir(), name + ".tmp");
+  try {
+    await writeFile(temporary, JSON.stringify(data), { mode: 0o600 });
+    await rename(temporary, path.join(backupsDir(), name));
+  } finally { await rm(temporary, { force: true }); }
   return name;
 }
 
@@ -41,5 +46,6 @@ export async function listBackups(): Promise<{ name: string; modified: Date }[]>
 
 /** Deletes every backup file (Delete everything, E10-8). */
 export async function deleteAllBackups(): Promise<void> {
-  await rm(backupsDir(), { recursive: true, force: true });
+  const files = await readdir(backupsDir(), { withFileTypes: true }).catch(() => []);
+  await Promise.all(files.filter(file => file.isFile()).map(file => rm(path.join(backupsDir(), file.name), { force: true })));
 }

@@ -80,6 +80,8 @@ RUN ln -s /app/tools/hash-password.mjs /usr/local/bin/hash-password
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
+COPY --from=build /app/src/lib/templates/v5.ts ./templates/v5/master.ts
+COPY --from=build /app/templates/v5/LICENSE ./templates/v5/LICENSE
 # Backups and export zips (mount a volume here); the server's own cache.
 RUN mkdir -p /data .next/cache && chown node:node /data .next/cache
 USER node

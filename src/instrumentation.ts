@@ -15,8 +15,8 @@ export async function register() {
     startJobSweep();
 
     // Nightly backups at 03:00, while they're switched on (E10-7).
-    const { startBackupSchedule } = await import("@/lib/backup-schedule");
-    startBackupSchedule();
+    const { startPreparationBackups } = await import("@/lib/preparation-backups");
+    startPreparationBackups();
 
     // The inbox check, while a Google account is connected (E15-3).
     const { startInboxSchedule } = await import("@/lib/google/sync");

@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
-import { Toggle } from "@/components/ui/toggle";
+import Link from "next/link";
 import { useTrackSave } from "@/components/save-tracker";
 import { useJob } from "@/hooks/use-job";
 import { IMPORT_MAX_BYTES, IMPORT_TOO_BIG } from "@/lib/import-limits";
@@ -81,7 +81,7 @@ export function DataSection({
   const [includeKey, setIncludeKey] = useState(false);
   const router = useRouter();
   const track = useTrackSave();
-  const [nightly, setNightly] = useState(backups.on);
+
   const [retention, setRetention] = useState(jobRetentionHours);
   const fileInput = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -120,16 +120,6 @@ export function DataSection({
     if (!result.ok) return toast(result.error);
     toast(`Imported. Your previous data is backed up as ${String(result.data.backup)}.`);
     router.refresh();
-  };
-
-  const switchBackups = (on: boolean) => {
-    setNightly(on);
-    void track(updateSettings({ nightlyBackup: on })).then((result) => {
-      if (!result.ok) {
-        setNightly(!on);
-        toast(result.error);
-      }
-    });
   };
 
   const changeRetention = (hours: number) => {
@@ -248,23 +238,9 @@ export function DataSection({
           }
         />
         <div className="flex flex-col gap-2 border-t border-line py-4">
-          <Toggle
-            label="Nightly backups"
-            description={
-              nightly
-                ? `Kept for ${backups.retentionDays} days in ${backups.dir}. ${
-                    backups.lastRun ? `Last one ran ${backups.lastRun}.` : "The first one runs tonight at 03:00."
-                  }`
-                : "Off. You'll only have what you export yourself."
-            }
-            checked={nightly}
-            onCheckedChange={switchBackups}
-          />
-          {nightly && backups.problem && (
-            <p role="alert" className="rounded-control bg-danger-surface px-3 py-2 text-meta text-error">
-              The last backup failed: {backups.problem}
-            </p>
-          )}
+          <Link className="underline" href="/settings/backups">Backup and restore</Link>
+          <p>Full archives, automatic preparation backups and manual recovery.</p>
+          {backups.problem && <p role="alert">{backups.problem}</p>}
         </div>
       </Card>
       <DangerZone />

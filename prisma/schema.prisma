@@ -102,6 +102,12 @@ model TailoringControl {
   paused Boolean @default(false)
 }
 
+model BackupPreparation {
+  id Int @id @default(autoincrement())
+  runId String @unique
+  createdAt DateTime @default(now())
+}
+
 model TailoringRevision {
   id String @id @default(cuid())
   runId String
