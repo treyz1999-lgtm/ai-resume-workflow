@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 approved and pushed; M6 approved and pushed; M7 ready for review (see M7_REVIEW.md); release approval pending.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 approved and pushed; M6 approved and pushed; M7 and V1 release approved November 23, 2026 (see M7_REVIEW.md).** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 

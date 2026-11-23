@@ -4,7 +4,7 @@ A local, single-user Docker application for evidence-backed resume preparation a
 
 Profile, work history and projects form your knowledge base. Discover roles or paste a job description, explicitly queue a preparation, review its locally rendered documents, and record the exact version you submitted. Discovery never submits applications or starts tailoring on its own.
 
-**Status:** M1–M7 functionality is implemented locally; the [M7 review](docs/M7_REVIEW.md) is ready for user approval. This is not yet a tagged V1 release. See the [milestone plan](docs/V1_PLAN.md) and individual review reports for measured results and limitations. Each milestone ends with user review before a push or continuation.
+**Status:** V1 is approved. The fork release tag is `workflow-v1.0.0` (distinct from inherited Dossier tags). See the [M7 review](docs/M7_REVIEW.md) for verification and limitations. See the [milestone plan](docs/V1_PLAN.md) and individual review reports for measured results and limitations. Each milestone ends with user review before a push or continuation.
 
 ## What it includes
 

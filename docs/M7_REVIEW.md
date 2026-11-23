@@ -1,6 +1,6 @@
 # M7 review — backup recovery and V1 packaging
 
-Status: ready for review; no M7 push or V1 tag has been authorized.
+Status: approved by the user November 23, 2026, including the M7 push and `workflow-v1.0.0` release tag. Reviewed implementation commit: `2c692b9`.
 
 ## Delivered
 
@@ -38,4 +38,4 @@ Open [Backup and restore](http://localhost:3000/settings/backups). Manual backup
 - Mermaid is editable source; architecture previews use uploaded images. Docker bundles LaTeX; no host compiler is required.
 - Dossier branding and its attribution remain visible. The repository documents original fork contributions separately from inherited work.
 
-Approval authorizes the M7 push and V1 tag. Nothing has been pushed or tagged for this milestone.
+The user approved the M7 push and V1 tag on November 23, 2026. The release uses `workflow-v1.0.0` to avoid overwriting inherited upstream tags.

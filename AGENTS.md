@@ -2,7 +2,7 @@
 
 ## Scope and milestone gates
 
-Implement the approved [V1 plan](docs/V1_PLAN.md). Current milestone: **M7, ready for review**. M0 was approved on October 28, 2026; M1 was approved November 2, 2026; M2 was approved and pushed November 3, 2026. M3 was approved and pushed at 4a80735. M4 was approved and pushed at 17ba146. M5 was approved and pushed at 8865604. M6 was approved and pushed at bdafd2b. M7 awaits its milestone gate; no V1 push/tag before approval. Do not claim a planned feature works before implementing and verifying it.
+Implement the approved [V1 plan](docs/V1_PLAN.md). Current milestone: **V1 approved**. M0 was approved on October 28, 2026; M1 was approved November 2, 2026; M2 was approved and pushed November 3, 2026. M3 was approved and pushed at 4a80735. M4 was approved and pushed at 17ba146. M5 was approved and pushed at 8865604. M6 was approved and pushed at bdafd2b. M7 and the V1 push/tag were approved by the user on November 23, 2026. Fork release tag: workflow-v1.0.0. Do not claim a planned feature works before implementing and verifying it.
 
 Every milestone ends with a review pause. Present the working feature, local diff, actual check results, useful screenshots/artifacts, and limitations. **Do not push, create the GitHub fork, or start the next milestone until the user approves.** The first milestone approval authorizes fork creation; subsequent approval authorizes its push and continuation. Local commits for integration/review are permitted. Only the coordinator performs pushes.
 

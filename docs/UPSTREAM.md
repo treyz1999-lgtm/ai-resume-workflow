@@ -22,9 +22,9 @@ Upstream Git history, copyright notices and license are preserved. The unmodifie
 | Job source adapters, startup discovery and search settings | Scheduled independent discovery, occurrence/repost handling, explicit tailoring selection and separate coverage scores |
 | Application board, table, dashboard and notes | Exact submitted-revision/score freezing, reapplication attempts, review queue and tracker CSV |
 | Gmail/Calendar and model-provider integrations | Evidence-based status review, ambiguous reapplication handling, confirmed Calendar effects and no subscription-to-API fallback |
-| Existing export/import foundations | M7 versioned full workflow archives, secret exclusion, preparation-count backups and verified fresh-install recovery (release approval pending) |
+| Existing export/import foundations | M7 versioned full workflow archives, secret exclusion, preparation-count backups and verified fresh-install recovery (V1 approved) |
 
-These boundaries support portfolio descriptions without presenting upstream work as original. Use measured acceptance from [release evidence](RELEASE.md), identify fixture versus live checks, and distinguish local M7 acceptance from an approved tagged release. Personal records and external V5 masters are not distributed with the fork.
+These boundaries support portfolio descriptions without presenting upstream work as original. Use measured acceptance from [release evidence](RELEASE.md), identify fixture versus live checks, and use the fork tag `workflow-v1.0.0` rather than inherited upstream release tags. Personal records and external V5 masters are not distributed with the fork.
 
 ## LaTeX attribution
 

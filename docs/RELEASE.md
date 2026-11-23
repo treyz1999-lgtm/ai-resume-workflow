@@ -1,6 +1,6 @@
 # Release, backup and recovery
 
-M7 is implemented and verified locally, awaiting user approval. Do not treat the current branch as an approved/tagged V1 release. The coordinator records final clean-install, restore, regression and accessibility evidence in the milestone review. Only user approval authorizes the release push and tag.
+M7 and the V1 release were approved on November 23, 2026. The fork release tag is `workflow-v1.0.0`; inherited `v1.*` tags belong to upstream Dossier. Final clean-install, restore, regression and accessibility evidence is recorded in the milestone review.
 
 ## Backup policy
 
@@ -31,6 +31,6 @@ Schema migrations run during startup. Rolling source code back is not automatica
 | [M4](M4_REVIEW.md) | Sequential preparation, SWE/Data/theme and letter cases, real fictional Codex/Data PDF run; 1,823 tests passed |
 | [M5](M5_REVIEW.md) | Exact submission history, revisions, tracker CSV and dashboard consistency; 1,856 tests passed |
 | [M6](M6_REVIEW.md) | Fictional Gmail/Calendar integration, conservative matching and chronology; 1,882 tests passed |
-| [M7](M7_REVIEW.md) | Fresh and populated-target restoration passed; 1,897 unit/database and 156 browser tests passed; user approval pending |
+| [M7](M7_REVIEW.md) | Fresh and populated-target restoration passed; 1,897 unit/database and 156 browser tests passed; approved November 23, 2026 |
 
 Counts reflect those historical runs, not cumulative independent tests or a promise that every model/provider works. Live Google/paid source tests were not required for fixture acceptance. Screenshots and generated sample artifacts must use fictional records. Consult [UPSTREAM.md](UPSTREAM.md) to distinguish inherited functionality from fork contributions.
