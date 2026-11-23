@@ -1,4 +1,5 @@
 import "server-only";
+import { scanLock } from "@/lib/discovery/store";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { encryptApiKey } from "@/lib/ai/api-key";
@@ -86,6 +87,25 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
   const keptKeys = [...SECRET_SETTINGS.filter((key) => !fromFile[key]), ...INSTALL_SETTINGS];
   await db.$transaction(
     async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(7710001)`;
+      await scanLock(tx);
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(2801029)`;
+      if (await tx.tailoringSelection.count({ where: { status: "RUNNING" } }) ||
+        await tx.discoveryScan.count({ where: { status: "RUNNING" } }) ||
+        await tx.executionRun.count({ where: { status: "RUNNING" } })) {
+        throw new Error("Pause or cancel active work before importing legacy data.");
+      }
+      await tx.tailoringSubmission.deleteMany();
+      await tx.tailoringSelection.deleteMany();
+      await tx.tailoringControl.deleteMany();
+      await tx.backupPreparation.deleteMany();
+      await tx.discoveryScan.deleteMany();
+      await tx.discoveryPosting.deleteMany();
+      await tx.discoveryControl.deleteMany();
+      await tx.knowledgeDetail.deleteMany();
+      await tx.knowledgeSnapshot.deleteMany();
+      await tx.resumeAsset.deleteMany();
+      await tx.executionRun.deleteMany();
       // Out with the old. Applications take their history, documents, chat,
       // notes and jobs along; the other jobs (a resume import, postings read
       // for applications never created) hold the old data too.
@@ -134,7 +154,7 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
       await tx.reference.createMany({ data: profile.references });
       await tx.fact.createMany({ data: profile.facts });
       await tx.theme.createMany({ data: themes.map((theme) => ({ ...theme, builtIn: false })) });
-      await tx.setting.createMany({ data: settings.filter((setting) => !SECRET_SETTINGS.includes(setting.key) && !INSTALL_SETTINGS.includes(setting.key)) });
+      await tx.setting.createMany({ data: settings.filter((setting) => !SECRET_SETTINGS.includes(setting.key) && !INSTALL_SETTINGS.includes(setting.key) && setting.key !== "backup.completedCount") });
       for (const [key, value] of Object.entries(fromFile)) if (value) await tx.setting.create({ data: { key, value } });
 
       const themeIds = new Set((await tx.theme.findMany({ select: { id: true } })).map((theme) => theme.id));

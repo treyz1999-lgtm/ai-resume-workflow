@@ -31,6 +31,12 @@ test("adds a publication with italics and a DOI, and shows it on the base resume
   await expect(page.getByLabel(/^Link/)).toHaveValue("https://doi.org/10.5555/98765");
   await expect(page.getByText("Saved just now")).toBeVisible();
 
+  // The citation save can finish before the debounced link save. Verify the
+  // latest field reached storage before navigating away.
+  await expect.poll(async () => (await sql<{ link: string }>(
+    `SELECT link FROM "Publication" WHERE citation LIKE 'Doe, J. (2024). Calm payouts.%'`,
+  ))[0]?.link).toBe("https://doi.org/10.5555/98765");
+
   await page.reload();
   await expect(page.getByRole("button", { name: /Doe, J\. \(2024\)\. Calm payouts.*doi\.org\/10\.5555\/98765/ })).toBeVisible();
 

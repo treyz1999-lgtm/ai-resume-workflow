@@ -40,6 +40,26 @@ beforeEach(async () => {
 afterAll(() => prisma().$disconnect());
 
 describe("importExport (E10-6)", () => {
+  it("replaces V5 state with legacy data, but refuses an active tailoring run", async () => {
+    await prisma().setting.create({ data: { key: "backup.completedCount", value: "100" } });
+    const file = await asFile();
+    const posting = await prisma().discoveryPosting.create({ data: {
+      identityKey: "legacy-check", occurrenceKey: "legacy-check:1", source: "TEXT", externalId: "fixture",
+      jd: "Fictional engineer", postingEvidence: {},
+    } });
+    const run = await prisma().tailoringSelection.create({ data: { postingId: posting.id, status: "RUNNING" } });
+    await prisma().knowledgeSnapshot.create({ data: { digest: "legacy-check", payload: { private: "old KB" } } });
+    await expect(importExport(prisma(), file)).rejects.toThrow("Pause or cancel");
+    expect(await prisma().knowledgeSnapshot.count()).toBe(1);
+    await prisma().tailoringSelection.update({ where: { id: run.id }, data: { status: "PENDING" } });
+    await importExport(prisma(), file);
+    expect(await prisma().tailoringSelection.count()).toBe(0);
+    expect(await prisma().discoveryPosting.count()).toBe(0);
+    expect(await prisma().knowledgeSnapshot.count()).toBe(0);
+    expect(await prisma().backupPreparation.count()).toBe(0);
+    expect(await prisma().setting.findUnique({ where: { key: "backup.completedCount" } })).toBeNull();
+    expect(await prisma().application.count()).toBe(file.applications.length);
+  });
   it("restores everything as it was exported", async () => {
     const file = await asFile();
     const before = await snapshot();

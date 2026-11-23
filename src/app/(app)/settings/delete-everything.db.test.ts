@@ -117,7 +117,8 @@ describe("deleteEverything (E10-8)", () => {
     ]);
     expect(counts).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(await prisma().theme.count({ where: { builtIn: true } })).toBe(12);
-    expect(await readdir(dataDir.path)).toEqual([]);
+    expect(await readdir(dataDir.path)).toEqual(["backups"]);
+    expect(await readdir(path.join(dataDir.path, "backups"))).toEqual([]);
   });
 
   it("does nothing without DELETE typed exactly", async () => {

@@ -1,6 +1,6 @@
 # AI Resume Workflow — V1 build plan
 
-Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 approved and pushed; M6 ready for review; M7 unstarted.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
+Status: **M0 approved October 28, 2026; M1 approved November 2, 2026; M2 approved and pushed November 3, 2026; M3 approved and pushed; M4 approved and pushed; M5 approved and pushed; M6 approved and pushed; M7 ready for review (see M7_REVIEW.md); release approval pending.** This document records approved scope, not completed functionality. Actual results belong in milestone review reports.
 
 ## Delivery contract
 
@@ -121,12 +121,12 @@ Gate: fictional rejections/interviews/assessments/offers, ambiguous duplicate ro
 
 Owners: infrastructure/product; coordinator owns final acceptance.
 
-- [ ] Host-visible backups folder, manual backup, configurable every-N-preparations backup. Defaults: ten newly ready preparations, ten automatic backups retained, manual backups until deleted.
-- [ ] Include KB/history/assets/templates/resumes/sources/reports/tracker/non-secret settings; exclude keys/tokens, document reconnection.
-- [ ] Checksums and restore to fresh Docker volumes; retries do not inflate preparation/backup counts.
-- [ ] Docker, Codex, models, sources, schedules, recovery/upgrades/troubleshooting docs.
-- [ ] Fictional demo, screenshots, architecture, upstream-versus-fork contributions, measured acceptance.
-- [ ] Versioned importer preserves Dossier export compatibility; regression/accessibility/clean install.
+- [x] Host-visible backups folder, manual backup, configurable every-N-preparations backup. Defaults: ten newly ready preparations, ten automatic backups retained, manual backups until deleted.
+- [x] Include KB/history/assets/templates/resumes/sources/reports/tracker/non-secret settings; exclude keys/tokens, document reconnection.
+- [x] Checksums and restore to fresh Docker volumes; retries do not inflate preparation/backup counts.
+- [x] Docker, Codex, models, sources, schedules, recovery/upgrades/troubleshooting docs.
+- [x] Fictional demo, screenshots, architecture, upstream-versus-fork contributions, measured acceptance.
+- [x] Versioned importer preserves Dossier export compatibility; regression/accessibility/clean install.
 
 Gate: clean and restored installs reproduce expected data/documents; full demo and release diff. Push/tag V1 only after approval.
 

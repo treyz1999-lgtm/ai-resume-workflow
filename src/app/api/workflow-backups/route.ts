@@ -23,7 +23,23 @@ export const GET = route(async request => {
 export const POST = route(async request => {
   if (Number(request.headers.get("content-length") ?? 0) > 128 * 1024 * 1024) return NextResponse.json({ error: "Archive exceeds the 128 MiB upload limit." }, { status: 413 });
   try {
-    const data = await request.json();
+    const reader = request.body?.getReader();
+    if (!reader) throw new Error("No backup request body.");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 128 * 1024 * 1024) {
+          await reader.cancel();
+          return NextResponse.json({ error: "Archive exceeds the 128 MiB upload limit." }, { status: 413 });
+        }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     if (data.action === "manual") return NextResponse.json({ name: await writeBackup("manual") });
     if (data.action === "settings") {
       await savePreparationBackupSettings(data.every, data.retain);

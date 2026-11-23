@@ -78,6 +78,28 @@ it("rejects checksum damage and rolls back the entire restore when a rechecksumm
   await expect(restoreWorkflowArchive(checksum(unknown), db)).rejects.toThrow("unknown field");
 });
 
+it("rolls back sequence restarts if the restore transaction fails before commit", async () => {
+  await prepared();
+  const archive = await exportWorkflowArchive(db);
+  await db.$executeRaw`ALTER SEQUENCE "KnowledgeSnapshot_version_seq" RESTART WITH 100`;
+  await db.knowledgeSnapshot.create({ data: { digest: "newer", payload: {} } });
+  const failingDb = new Proxy(db, {
+    get(target, key, receiver) {
+      if (key === "$transaction") return (callback: (tx: unknown) => Promise<unknown>) => target.$transaction(async tx => {
+        await callback(tx);
+        throw new Error("Simulated failure before commit");
+      }, { timeout: 120_000 });
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  await expect(restoreWorkflowArchive(archive, failingDb)).rejects.toThrow("Simulated failure");
+  expect((await db.knowledgeSnapshot.create({ data: { digest: "after-rollback", payload: {} } })).version).toBe(101);
+  expect(await db.knowledgeSnapshot.count({ where: { digest: "newer" } })).toBe(1);
+  await restoreWorkflowArchive(archive, db);
+  expect(await db.backupPreparation.count()).toBe(archive.payload.BackupPreparation.length);
+  expect(await db.tailoringSubmission.count()).toBe(1);
+});
+
 it("excludes connection secrets and runtime prompts while retaining non-secret settings", async () => {
   await db.setting.createMany({ data: [
     { key: "apiKeyEnc", value: "secret-api" }, { key: "googleClientSecretEnc", value: "secret-google" },

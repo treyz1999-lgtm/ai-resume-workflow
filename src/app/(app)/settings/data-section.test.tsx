@@ -141,33 +141,16 @@ describe("Import (E10-6)", () => {
   });
 });
 
-describe("Nightly backups (E10-7)", () => {
-  it("says where backups are kept and when the last one ran", () => {
+describe("Full workflow backups", () => {
+  it("opens the archive controls from Your data", () => {
     render(<DataSection jobRetentionHours={24} hasApiKey={false} exportName="x.json" backups={backups} />);
-    const toggle = screen.getByRole("switch", { name: "Nightly backups" });
-    expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(toggle).toHaveAccessibleDescription("Kept for 14 days in /data/backups. Last one ran today at 03:00.");
+    expect(screen.getByRole("link", { name: "Backup and restore" })).toHaveAttribute("href", "/settings/backups");
   });
-
-  it("says when the first one will run", () => {
-    render(<DataSection jobRetentionHours={24} hasApiKey={false} exportName="x.json" backups={{ ...backups, lastRun: null }} />);
-    expect(screen.getByRole("switch")).toHaveAccessibleDescription("Kept for 14 days in /data/backups. The first one runs tonight at 03:00.");
-  });
-
-  it("shows a failure", () => {
-    render(<DataSection jobRetentionHours={24} hasApiKey={false} exportName="x.json" backups={{ ...backups, problem: "EACCES: permission denied" }} />);
-    expect(screen.getByRole("alert")).toHaveTextContent("The last backup failed: EACCES: permission denied");
-  });
-
-  it("switches them off", async () => {
-    const user = userEvent.setup();
-    render(<DataSection jobRetentionHours={24} hasApiKey={false} exportName="x.json" backups={backups} />);
-    await user.click(screen.getByRole("switch", { name: "Nightly backups" }));
-    expect(updateSettings).toHaveBeenCalledWith({ nightlyBackup: false });
-    expect(screen.getByRole("switch")).toHaveAccessibleDescription("Off. You'll only have what you export yourself.");
+  it("shows the latest backup problem", () => {
+    render(<DataSection jobRetentionHours={24} hasApiKey={false} exportName="x.json" backups={{ ...backups, problem: "Disk full" }} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Disk full");
   });
 });
-
 describe("Keep task data for", () => {
   it("says what it keeps, and changes how long", async () => {
     const user = userEvent.setup();

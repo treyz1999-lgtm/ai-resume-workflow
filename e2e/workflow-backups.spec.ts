@@ -1,0 +1,30 @@
+import { expect, test } from "@playwright/test";
+import { resetData, sql } from "./support";
+
+test("manual archive, checksum preview, confirmed restore and saved backup controls", async ({ page, request }) => {
+  await resetData();
+  await page.goto("/settings/backups");
+  await expect(page.getByRole("heading", { name: "Backup and restore" })).toBeVisible();
+  await page.getByLabel("Back up after preparations (0 turns off)").fill("25");
+  await page.getByLabel("Automatic backups to keep").fill("3");
+  await page.getByRole("button", { name: "Save backup settings" }).click();
+  await expect(page.getByRole("status").first()).toContainText("Backup settings saved");
+  await page.reload();
+  await expect(page.getByLabel("Automatic backups to keep")).toHaveValue("3");
+  await page.getByRole("button", { name: "Back up now" }).click();
+  await expect(page.getByRole("status").first()).toContainText("Manual backup saved");
+  const listing = await (await request.get("/api/workflow-backups")).json();
+  expect(listing.files.some((file: {name:string}) => file.name.includes("manual"))).toBe(true);
+  const downloaded = await request.get("/api/workflow-backups?export=1");
+  expect(downloaded.ok()).toBe(true);
+  const archive = await downloaded.body();
+  const before = await sql('SELECT count(*)::int AS count FROM "Application"');
+  await page.getByLabel(/Archive file/).setInputFiles({ name: "workflow.json", mimeType: "application/json", buffer: archive });
+  await expect(page.getByRole("status").first()).toContainText("Checksum verified");
+  expect(await sql('SELECT count(*)::int AS count FROM "Application"')).toEqual(before);
+  if (process.env.M7_REVIEW_ARTIFACTS === "1") await page.screenshot({ path: "runtime/m7/backup-preview.png", fullPage: true });
+  await page.getByRole("button", { name: "Confirm restore" }).click();
+  await expect(page.getByRole("status").first()).toContainText("Restore complete", { timeout: 30_000 });
+  expect(await sql('SELECT count(*)::int AS count FROM "Application"')).toEqual(before);
+  expect(await sql('SELECT paused FROM "TailoringControl" WHERE id=\'queue\'')).toEqual([{ paused: true }]);
+});

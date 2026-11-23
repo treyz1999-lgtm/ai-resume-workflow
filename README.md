@@ -4,7 +4,7 @@ A local, single-user Docker application for evidence-backed resume preparation a
 
 Profile, work history and projects form your knowledge base. Discover roles or paste a job description, explicitly queue a preparation, review its locally rendered documents, and record the exact version you submitted. Discovery never submits applications or starts tailoring on its own.
 
-**Status:** M1–M6 functionality is implemented; M7 release packaging and backup recovery are in progress. This is not yet a tagged V1 release. See the [milestone plan](docs/V1_PLAN.md) and individual review reports for measured results and limitations. Each milestone ends with user review before a push or continuation.
+**Status:** M1–M7 functionality is implemented locally; the [M7 review](docs/M7_REVIEW.md) is ready for user approval. This is not yet a tagged V1 release. See the [milestone plan](docs/V1_PLAN.md) and individual review reports for measured results and limitations. Each milestone ends with user review before a push or continuation.
 
 ## What it includes
 
@@ -14,6 +14,7 @@ Profile, work history and projects form your knowledge base. Discover roles or p
 - Local PDF compilation, evidence and layout checks, optional cover letters, document review, revisions and source downloads.
 - Board/table/dashboard tracking, notes, CSV import/export and exact submitted-version scoring.
 - Optional Gmail status checks with ambiguous matches held for review; optional confirmed Calendar changes.
+- Checksummed full-workflow backups, preparation-count scheduling, host-visible archives and confirmed restore.
 - ChatGPT-authenticated Codex execution, plus retained API and local-model settings. No silent switch from subscription execution to API billing.
 
 Model interpretation can be wrong. Review the evidence, reports and actual PDF before submitting. Verification checks embedded link destinations, not whether remote websites are currently available. Mermaid architecture source is editable; visual diagram previews currently use uploaded PNG/JPEG files.

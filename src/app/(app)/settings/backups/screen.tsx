@@ -19,7 +19,13 @@ export function BackupsScreen() {
     const data = await request();
     setFiles(data.files); setEvery(data.settings.every); setRetain(data.settings.retain);
   }
-  useEffect(() => { void refresh().catch(error => setMessage(error.message)); }, []);
+  useEffect(() => {
+    let active = true;
+    void request().then(data => {
+      if (active) { setFiles(data.files); setEvery(data.settings.every); setRetain(data.settings.retain); }
+    }).catch(error => { if (active) setMessage(error.message); });
+    return () => { active = false; };
+  }, []);
   function perform(task: () => Promise<void>) {
     start(async () => { try { await task(); await refresh(); } catch (error) { setMessage(error instanceof Error ? error.message : "Operation failed."); } });
   }

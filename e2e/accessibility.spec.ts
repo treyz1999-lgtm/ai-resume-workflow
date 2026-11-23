@@ -56,6 +56,7 @@ const SCREENS = [
   "/settings?section=documents",
   "/settings?section=google",
   "/settings?section=data",
+  "/settings/backups",
   "/settings?section=about",
   "/applications/nope",
   "/nowhere",

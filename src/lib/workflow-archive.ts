@@ -30,13 +30,21 @@ const archiveSchema = z.object({
 }).strict();
 export type WorkflowArchive = z.infer<typeof archiveSchema>;
 const checksum = (payload: unknown) => createHash("sha256").update(JSON.stringify(payload)).digest("hex");
-const safeSetting = (key: unknown) => typeof key === "string" &&
-  !/(api|key|token|secret|password|credential|cookie|oauth|connector|googleClient|baseUrl)/i.test(key);
+function safeSetting(row: Record<string, unknown>) {
+  if (typeof row.key !== "string" || /(api|key|token|secret|password|credential|cookie|oauth|connector|googleClient)/i.test(row.key)) return false;
+  if (row.key === "baseUrl") {
+    try {
+      const url = new URL(String(row.value));
+      return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash;
+    } catch { return false; }
+  }
+  return true;
+}
 
 export function validateWorkflowArchive(value: unknown): WorkflowArchive {
   const archive = archiveSchema.parse(value);
   if (checksum({ payload: archive.payload, templateSource: archive.templateSource }) !== archive.sha256) throw new Error("Archive checksum does not match.");
-  if (archive.payload.Setting.some(row => !safeSetting(row.key))) throw new Error("Archive contains authentication settings.");
+  if (archive.payload.Setting.some(row => !safeSetting(row))) throw new Error("Archive contains authentication settings.");
   return archive;
 }
 
@@ -48,7 +56,7 @@ export async function exportWorkflowArchive(db: PrismaClient = prisma): Promise<
       const rows = await tx.$queryRawUnsafe<{ row: Record<string, unknown> }[]>(`SELECT row_to_json(t) AS row FROM "${table}" t`);
       payload[table] = rows.map(entry => entry.row);
     }
-    payload.Setting = payload.Setting.filter(row => safeSetting(row.key));
+    payload.Setting = payload.Setting.filter(safeSetting);
     return { format: "ai-resume-workflow", version: 1, createdAt: new Date().toISOString(), payload, templateSource, sha256: checksum({ payload, templateSource }) };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 120_000 });
 }
@@ -69,7 +77,9 @@ export async function restoreWorkflowArchive(value: unknown, db: PrismaClient = 
     throw new Error("This archive uses different template masters. Restore with its compatible application version.");
   }
   return db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7710001)`;
     await scanLock(tx);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(2801029)`;
     const [jobs, runs, scans, executions] = await Promise.all([
       tx.job.count({ where: { status: { in: ["QUEUED", "RUNNING"] } } }),
       tx.tailoringSelection.count({ where: { status: "RUNNING" } }),
@@ -88,12 +98,28 @@ export async function restoreWorkflowArchive(value: unknown, db: PrismaClient = 
     await tx.discoveryScan.deleteMany();
     await tx.claudePaste.deleteMany();
     await tx.googleAccount.deleteMany();
-    for (const table of [...ARCHIVE_TABLES].reverse()) await tx.$executeRawUnsafe(`DELETE FROM "${table}"`);
+    for (const table of [...ARCHIVE_TABLES].reverse()) {
+      if (table === "BackupPreparation") continue;
+      await tx.$executeRawUnsafe(`DELETE FROM "${table}"${table === "Theme" ? ' WHERE "builtIn" = false' : ""}`);
+    }
+    // Deleting submissions updates their runs and can fire the ready counter.
+    // Clear the ledger after those triggers, before restoring its snapshot.
+    await tx.backupPreparation.deleteMany();
     for (const table of ARCHIVE_TABLES) {
       if (!archive.payload[table].length) continue;
+      let rows = archive.payload[table];
+      if (table === "Theme") {
+        const existing = await tx.$queryRaw<{ row: Record<string, unknown> }[]>`SELECT row_to_json(t) AS row FROM "Theme" t WHERE "builtIn" = true`;
+        const compare = (row: Record<string, unknown>) => JSON.stringify(Object.keys(row).sort().filter(key => !["createdAt", "updatedAt"].includes(key)).map(key => [key, row[key]]));
+        for (const { row } of existing) {
+          const incoming = rows.find(theme => theme.id === row.id);
+          if (incoming && compare(incoming) !== compare(row)) throw new Error("Archive built-in themes differ from this application version.");
+        }
+        rows = rows.filter(row => !existing.some(theme => theme.row.id === row.id));
+      }
       await tx.$executeRawUnsafe(
         `INSERT INTO "${table}" SELECT * FROM json_populate_recordset(NULL::"${table}", $1::json)`,
-        JSON.stringify(archive.payload[table]),
+        JSON.stringify(rows),
       );
     }
     await tx.tailoringSelection.updateMany({ where: { status: "RUNNING" }, data: { status: "QUEUED", owner: null, leaseUntil: null } });
@@ -105,10 +131,13 @@ export async function restoreWorkflowArchive(value: unknown, db: PrismaClient = 
     if (control && typeof control.config === "object" && control.config !== null && !Array.isArray(control.config)) {
       await tx.discoveryControl.update({ where: { id: "discovery" }, data: { config: { ...control.config, enabled: false } } });
     }
-    await tx.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('"TailoringSelection"','position'), COALESCE((SELECT MAX(position) FROM "TailoringSelection"), 0) + 1, false)`);
     const count = await tx.backupPreparation.count();
     await tx.setting.upsert({ where: { key: "backup.completedCount" }, create: { key: "backup.completedCount", value: String(count) }, update: { value: String(count) } });
-    await tx.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('"BackupPreparation"','id'), COALESCE((SELECT MAX(id) FROM "BackupPreparation"), 0) + 1, false)`);
+    // RESTART rolls back with the restore transaction; setval does not.
+    for (const [table, column] of [["TailoringSelection", "position"], ["BackupPreparation", "id"], ["KnowledgeSnapshot", "version"]] as const) {
+      const [row] = await tx.$queryRawUnsafe<{ next: number }[]>(`SELECT COALESCE(MAX("${column}"), 0) + 1 AS next FROM "${table}"`);
+      await tx.$executeRawUnsafe(`ALTER SEQUENCE "${table}_${column}_seq" RESTART WITH ${row.next}`);
+    }
     return archiveSummary(archive);
   }, { timeout: 120_000 });
 }
