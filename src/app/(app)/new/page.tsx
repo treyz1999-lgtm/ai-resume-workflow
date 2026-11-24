@@ -27,9 +27,9 @@ export default async function NewApplicationPage({ searchParams }: PageProps<"/n
     // "Write to them" on Startups (#222): what's known about the startup, without its addresses.
     typeof startupId === "string" ? getStartup(startupId) : null,
   ]);
-  if (legacy !== "1") return <DiscoveryScreen view={await loadDiscovery()} initialIntake={{
+  if (legacy !== "1") return <DiscoveryScreen manualOnly view={await loadDiscovery()} initialIntake={{
     url: fromFindJobs?.url ?? startup?.links[0]?.url ?? startup?.website ?? "",
-    jd: fromFindJobs ? postingText(fromFindJobs) : startup ? startupPostingText(startup) : "",
+    jd: fromFindJobs?.complete ? postingText(fromFindJobs) : startup ? startupPostingText(startup) : "",
     company: fromFindJobs?.company ?? startup?.company ?? "", role: fromFindJobs?.title ?? "",
   }} />;
   return (

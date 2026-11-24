@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Pool } from "pg";
 import { z } from "zod";
 import { discoveryInputSchema, discoveryAnalysisSchema } from "../src/lib/discovery/contracts";
-import { discoveryPrompt, validateAnalysis, DISCOVERY_CONTEXT_MAX_BYTES } from "../src/lib/discovery/analysis-task";
+import { analyzeWithCorrection, AnalysisValidationError, DISCOVERY_CONTEXT_MAX_BYTES } from "../src/lib/discovery/analysis-task";
 import { ExecutionError } from "./rpc";
 import { CodexAdapter } from "./codex";
 import { handleTailoringAI } from "./tailoring-ai";
@@ -59,15 +59,17 @@ const server = createServer(async (request, response) => {
       if (await handleTailoringAI(request, response) || await handleTailoringRender(request, response) || await handleStatusReport(request, response) || await handleWebSearch(request, response)) return;
     if (method === "POST" && path === "/discovery/analyze") {
       const input = z.object({ posting: discoveryInputSchema, kb: z.unknown(), model: z.string().max(160) }).strict().parse(await body(request, DISCOVERY_CONTEXT_MAX_BYTES));
-      const prompt = discoveryPrompt(input.posting, input.kb);
       const controller = new AbortController();
       const abort = () => { if (!response.writableEnded) controller.abort(); };
       response.on("close", abort);
       try {
-        const result = await discoveryAdapter.execute({ id: "discovery", prompt, model: input.model || undefined, outputSchema: z.toJSONSchema(discoveryAnalysisSchema) }, controller.signal, () => {});
-        return json(response, validateAnalysis(result.structured, input.posting, input.kb));
+        const result = await analyzeWithCorrection(input.posting, input.kb, async prompt => {
+          const output = await discoveryAdapter.execute({ id: "discovery", prompt, model: input.model || undefined, outputSchema: z.toJSONSchema(discoveryAnalysisSchema) }, controller.signal, () => {});
+          return output.structured;
+        }, controller.signal);
+        return json(response, result);
       } catch (error) {
-        return json(response, { code: error instanceof ExecutionError ? error.code : "invalid-result" }, 503);
+        return json(response, { code: error instanceof AnalysisValidationError ? error.reason : error instanceof ExecutionError ? error.code : "invalid-result" }, 503);
       } finally { response.off("close", abort); }
     }
     if (method === "POST" && path === "/library/preview") {

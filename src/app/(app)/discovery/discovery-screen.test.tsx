@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { DEFAULT_DISCOVERY_CONFIG, type DiscoveryPostingView, type DiscoveryView } from "@/lib/discovery/contracts";
 import { DiscoveryScreen } from "./discovery-screen";
 
-const mocks = vi.hoisted(() => ({ pause: vi.fn(), resume: vi.fn(), stop: vi.fn(), cancelScan: vi.fn(), saveConfig: vi.fn(), startSession: vi.fn(), stopSession: vi.fn(), scanNow: vi.fn(), addPosting: vi.fn(), changeState: vi.fn(), selectPostings: vi.fn(), removeSelection: vi.fn(), retryScan: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetchRole: vi.fn(), pause: vi.fn(), resume: vi.fn(), stop: vi.fn(), cancelScan: vi.fn(), saveConfig: vi.fn(), startSession: vi.fn(), stopSession: vi.fn(), scanNow: vi.fn(), addPosting: vi.fn(), changeState: vi.fn(), selectPostings: vi.fn(), removeSelection: vi.fn(), retryScan: vi.fn(), refresh: vi.fn() }));
 vi.mock("./actions", () => mocks);
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }), usePathname: () => "/discovery" }));
 const now = "2026-11-03T12:00:00.000Z";
@@ -149,4 +149,34 @@ it("exposes pause and immediate stop without changing tailoring", async () => {
   await userEvent.click(screen.getByRole("button", { name:"Stop now" }));
   expect(mocks.stop).toHaveBeenCalledWith({});
   expect(mocks.selectPostings).not.toHaveBeenCalled();
+});
+
+it("fetches and previews a manual link while discovery is paused without starting a scan", async () => {
+  mocks.fetchRole.mockResolvedValue({ok:true,data:{url:"https://example.com/job",jd:"Fictional complete job description."}});
+  render(<DiscoveryScreen manualOnly view={view({config:{...DEFAULT_DISCOVERY_CONFIG,paused:true}})} />);
+  expect(screen.getByRole("heading",{name:"New application"})).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"Resume discovery"})).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Posting URL"),{target:{value:"https://example.com/job"}});
+  await userEvent.click(screen.getByRole("button",{name:"Fetch posting"}));
+  expect(screen.getByLabelText("Full job description")).toHaveValue("Fictional complete job description.");
+  expect(mocks.scanNow).not.toHaveBeenCalled();expect(mocks.resume).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button",{name:"Analyze posting"}));
+  expect(mocks.addPosting).toHaveBeenCalledWith({url:"https://example.com/job",jd:"Fictional complete job description.",company:"",role:""});
+});
+it("preserves a blocked URL and offers pasted text without enqueueing", async () => {
+  mocks.fetchRole.mockResolvedValue({ok:false,error:"The job site blocks fetching. Paste the posting instead."});
+  render(<DiscoveryScreen view={view()} />);
+  fireEvent.change(screen.getByLabelText("Posting URL"),{target:{value:"https://example.com/job"}});
+  await userEvent.click(screen.getByRole("button",{name:"Fetch posting"}));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Paste the posting");
+  expect(screen.getByLabelText("Posting URL")).toHaveValue("https://example.com/job");
+  expect(mocks.addPosting).not.toHaveBeenCalled();
+});
+
+it("allows retrying failed manual analysis while discovery is paused", async () => {
+ render(<DiscoveryScreen manualOnly view={view({config:{...DEFAULT_DISCOVERY_CONFIG,paused:true},scans:[{id:"failed-manual",manualInput:true,status:"FAILED",stage:"Analysis",sourceResults:[],error:"Quote mismatch",createdAt:now,finishedAt:now}]})} />);
+ const details=screen.getByText(/failed ·/);await userEvent.click(details);
+ await userEvent.click(screen.getByRole("button",{name:"Retry scan"}));
+ expect(mocks.retryScan).toHaveBeenCalledWith({id:"failed-manual"});
+ expect(mocks.resume).not.toHaveBeenCalled();
 });

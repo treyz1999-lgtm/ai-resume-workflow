@@ -14,6 +14,9 @@ test("a pasted role can be reviewed, saved and explicitly selected for tailoring
   await page.getByLabel("Discovery model connection").selectOption("configured");
   await page.getByRole("button", { name: "Save discovery settings" }).click();
   await expect(page.getByText("Discovery settings saved.")).toBeVisible();
+  await page.getByRole("button", {name:"Pause discovery",exact:true}).click();
+  await page.goto("/new?fresh=1");
+  await expect(page.getByRole("heading",{name:"New application",exact:true})).toBeVisible();
   await page.getByLabel("Company (optional)").fill("Aurora Labs");
   await page.getByLabel("Role (optional)").fill("Data Engineer");
   await page.getByLabel("Full job description").fill("Aurora Labs — Data Engineer. Remote, US. SQL is required. Python is preferred. 0–2 years of experience. $90,000–$110,000 USD per year. Requisition AUR-101.");
@@ -41,7 +44,7 @@ test("a pasted role can be reviewed, saved and explicitly selected for tailoring
 test("primary search routes share V5 discovery with persistent pause and stop controls", async ({ page }) => {
   for (const route of ["/jobs", "/new", "/discovery"]) {
     await page.goto(route);
-    await expect(page.getByRole("heading", { name: "Discover your next role", exact:true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: route === "/new" ? "New application" : "Discover your next role", exact:true })).toBeVisible();
   }
   await page.getByRole("button", {name:"Pause discovery",exact:true}).click();
   await expect(page.getByRole("button", {name:"Resume discovery",exact:true})).toBeVisible();

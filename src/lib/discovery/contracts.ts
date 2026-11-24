@@ -53,7 +53,7 @@ export type SourceResult = { source: string; found: number; error: string | null
 export type DiscoveryPostingView = { id: string; source: string; url: string; company: string; role: string; jd: string; complete: boolean; postingEvidence: PostingEvidence; postedAt: string | null; firstSeenAt: string; lastSeenAt: string; sightings: number; extracted: DiscoveryAnalysis["extracted"] | null; coverage: CoverageReport | null; kbSnapshotId: string | null; state: PostingState; analysisError: string | null; selected: boolean };
 export type DiscoveryView = {
   config: DiscoveryConfig; configured: boolean; sessionUntil: string | null; nextTickAt: string | null;
-  scans: { id: string; status: string; stage: string | null; sourceResults: SourceResult[]; error: string | null; createdAt: string; finishedAt: string | null }[];
+  scans: { id: string; manualInput?: boolean; status: string; stage: string | null; sourceResults: SourceResult[]; error: string | null; createdAt: string; finishedAt: string | null }[];
   postings: DiscoveryPostingView[];
   selections: { id: string; postingId: string; company: string; role: string; createdAt: string }[];
 };

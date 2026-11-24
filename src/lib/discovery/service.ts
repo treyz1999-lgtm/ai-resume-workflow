@@ -16,7 +16,7 @@ export async function loadDiscovery(now = new Date()): Promise<DiscoveryView> {
   const [control, scans, postings, selections] = await Promise.all([
     prisma.discoveryControl.findUnique({ where: { id: "discovery" } }),
     prisma.discoveryScan.findMany({ orderBy: { createdAt: "desc" }, take: 30, select: {
-      id: true, status: true, stage: true, sourceResults: true, error: true, createdAt: true, finishedAt: true,
+      id: true, input: true, status: true, stage: true, sourceResults: true, error: true, createdAt: true, finishedAt: true,
     } }),
     prisma.discoveryPosting.findMany({ orderBy: { lastSeenAt: "desc" }, include: { selection: { select: { id: true } } } }),
     prisma.tailoringSelection.findMany({ where: { status: "QUEUED" }, orderBy: { position: "asc" }, select: { id: true, postingId: true, createdAt: true, posting: { select: { company: true, role: true } } } }),
@@ -28,7 +28,7 @@ export async function loadDiscovery(now = new Date()): Promise<DiscoveryView> {
     && discoveryAllowed(config, sessionUntil, nextTick) ? nextTick.toISOString() : null;
   return {
     config, configured: Boolean(control), sessionUntil: sessionUntil?.toISOString() ?? null, nextTickAt,
-    scans: scans.map(row => ({ id: row.id, status: row.status, stage: row.stage, sourceResults: (row.sourceResults ?? []) as SourceResult[], error: row.error, createdAt: row.createdAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null })),
+    scans: scans.map(row => ({ id: row.id, manualInput: Boolean(row.input), status: row.status, stage: row.stage, sourceResults: (row.sourceResults ?? []) as SourceResult[], error: row.error, createdAt: row.createdAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null })),
     postings: postings.map(row => ({ id: row.id, source: row.source, url: row.url, company: row.company, role: row.role, jd: row.jd, complete: row.complete,
       postingEvidence: postingEvidenceSchema.parse(row.postingEvidence), postedAt: row.postedAt?.toISOString() ?? null, firstSeenAt: row.firstSeenAt.toISOString(), lastSeenAt: row.lastSeenAt.toISOString(), sightings: row.sightings,
       extracted: row.extracted as DiscoveryAnalysis["extracted"] | null, coverage: row.coverage as CoverageReport | null, kbSnapshotId: row.kbSnapshotId, state: postingStateSchema.parse(row.state), analysisError: row.analysisError, selected: Boolean(row.selection) })),

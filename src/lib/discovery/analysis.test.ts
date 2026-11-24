@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { discoveryPrompt, validateAnalysis, DISCOVERY_CONTEXT_MAX_BYTES } from "./analysis-task";
+import { analyzeWithCorrection, discoveryPrompt, validateAnalysis, DISCOVERY_CONTEXT_MAX_BYTES } from "./analysis-task";
 import { DEFAULT_DISCOVERY_CONFIG, type DiscoveryAnalysis, type DiscoveryInput } from "./contracts";
 const { complete } = vi.hoisted(() => ({ complete: vi.fn() }));
 vi.mock("@/lib/ai", () => ({ getAiProvider: async () => ({ complete }) }));
@@ -52,4 +52,40 @@ describe("discovery source-evidence analysis", () => {
     request.mockResolvedValue(new Response(JSON.stringify(bad)));
     await expect(analyzePosting(posting, kb, DEFAULT_DISCOVERY_CONFIG, new AbortController().signal)).rejects.toThrow("source-evidence");
   });
+});
+
+describe("bounded analysis correction", () => {
+ it("repairs unsupported citations using both complete sources", async () => {
+  const bad=analysis();bad.requirements[0].kbQuotes=["Invented evidence"];
+  const execute=vi.fn().mockResolvedValueOnce(bad).mockResolvedValueOnce(analysis());
+  const fixed=await analyzeWithCorrection(posting,kb,execute,new AbortController().signal);
+  expect(fixed.requirements[0].kbQuotes).toEqual(["Built Python services"]);
+  expect(execute).toHaveBeenCalledTimes(2);
+  expect(execute.mock.calls[1][0]).toContain(posting.jd);
+  expect(execute.mock.calls[1][0]).toContain("Built Python services");
+  expect(execute.mock.calls[1][0]).toContain("unsupported KB evidence");
+ });
+ it("rejects repeated invalid evidence instead of accepting a score", async () => {
+  const bad=analysis();bad.requirements[0].kbQuotes=["Invented evidence"];
+  const execute=vi.fn().mockResolvedValue(bad);
+  await expect(analyzeWithCorrection(posting,kb,execute,new AbortController().signal)).rejects.toMatchObject({reason:"kb-quote"});
+  expect(execute).toHaveBeenCalledTimes(2);
+ });
+ it("does not retry quota or cancellation failures", async () => {
+  const execute=vi.fn().mockRejectedValue({code:"quota"});
+  await expect(analyzeWithCorrection(posting,kb,execute,new AbortController().signal)).rejects.toMatchObject({code:"quota"});
+  expect(execute).toHaveBeenCalledTimes(1);
+ });
+ it("allows one malformed-format correction", async () => {
+  const execute=vi.fn().mockRejectedValueOnce({code:"invalid-result"}).mockResolvedValueOnce(analysis());
+  expect((await analyzeWithCorrection(posting,kb,execute,new AbortController().signal)).requirements).toHaveLength(2);
+ });
+});
+
+it("cannot repair a bad citation by dropping the actual requirement", async () => {
+ const bad=analysis();bad.requirements[0].kbQuotes=["Invented evidence"];
+ const shortened=analysis();shortened.requirements.shift();
+ const execute=vi.fn().mockResolvedValueOnce(bad).mockResolvedValueOnce(shortened);
+ await expect(analyzeWithCorrection(posting,kb,execute,new AbortController().signal)).rejects.toMatchObject({reason:"evidence"});
+ expect(execute).toHaveBeenCalledTimes(2);
 });

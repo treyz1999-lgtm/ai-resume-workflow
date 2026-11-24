@@ -2,12 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { action } from "@/lib/action";
+import { action, ActionError } from "@/lib/action";
+import { fetchPosting } from "@/lib/posting-fetch";
 import { discoveryConfigSchema, intakeSchema, postingStateSchema } from "@/lib/discovery/contracts";
 import { pauseDiscovery, resumeDiscovery, stopDiscovery, cancelDiscoveryScan, saveDiscoveryConfig, startDiscoverySession, stopDiscoverySession, requestDiscoveryScan, intakePosting, setDiscoveryState, selectForTailoring, removeTailoringSelection, retryDiscoveryScan } from "@/lib/discovery/service";
 
 const ids = z.array(z.string().min(1).max(200)).min(1).max(100);
 const empty = z.object({}).strict();
+export const fetchRole = action(z.object({ url: z.string().trim().min(1).max(4000) }).strict(), async ({ url }) => {
+  const link = /^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`;
+  const result = await fetchPosting(link);
+  if (!result.ok) throw new ActionError(result.error);
+  return { url: result.url, jd: result.text };
+});
 function refresh() { revalidatePath("/discovery"); revalidatePath("/jobs"); revalidatePath("/new"); }
 export const pause = action(empty, async () => { await pauseDiscovery(); refresh(); return null; });
 export const resume = action(empty, async () => { await resumeDiscovery(); refresh(); return null; });

@@ -166,3 +166,19 @@ it("only shows upcoming ticks within a currently active session or window", asyn
   await prisma().discoveryControl.update({ where: { id: "discovery" }, data: { sessionUntil: new Date(now.getTime() + 120_000) } });
   expect((await loadDiscovery(now)).nextTickAt).toBe(nextTickAt.toISOString());
 });
+
+it("claims explicit posting intake while paused without restarting scheduled searches", async () => {
+  await pauseDiscovery();
+  await enqueueScan({url:"https://example.com/job",jd:"",company:"",role:""},now);
+  const claimed=await claimScan(now);
+  expect(claimed).toMatchObject({status:"RUNNING",manual:true,input:{url:"https://example.com/job"}});
+  expect((await loadDiscovery()).config.paused).toBe(true);
+  await cancelDiscoveryScan(claimed!.id);
+  expect(await claimScan(now)).toBeNull();
+});
+
+it("explains how to unblock manual intake behind a paused queued search", async () => {
+ await enqueueScan(undefined,now); await pauseDiscovery();
+ await expect(enqueueScan({url:"https://example.com/job",jd:"",company:"",role:""},now)).rejects.toThrow("Cancel it in Scan history");
+ expect(await prisma().discoveryScan.count()).toBe(1);
+});

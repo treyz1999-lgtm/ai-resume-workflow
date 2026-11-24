@@ -30,6 +30,10 @@ export async function enqueueScan(input?: IntakeInput, now = new Date()): Promis
     await scanLock(tx); await recoverExpired(tx, now);
     const active = await tx.discoveryScan.findFirst({ where: { status: { in: ACTIVE } } });
     if (active) {
+      if (input && active.status === "QUEUED" && !active.input) {
+        const control = await tx.discoveryControl.findUnique({ where: { id: "discovery" } });
+        if (configFrom(control?.config).paused) throw new ActionError("A board search is queued while discovery is paused. Cancel it in Scan history, then add this role. Your input has not been submitted.");
+      }
       if (input) throw new ActionError("Discovery is busy. Your text has not been submitted; wait for this scan to finish and try again.");
       return;
     }
@@ -53,14 +57,15 @@ export async function claimScan(now = new Date()) {
     await scanLock(tx); await recoverExpired(tx, now);
     const control = await tx.discoveryControl.findUnique({ where: { id: "discovery" } });
     const config = configFrom(control?.config);
-    if (config.paused) return null;
-    const allowed = discoveryAllowed(config, control?.sessionUntil ?? null, now);
+    const allowed = !config.paused && discoveryAllowed(config, control?.sessionUntil ?? null, now);
     if (control && allowed && (!control.nextTickAt || control.nextTickAt <= now)) {
       await tx.discoveryControl.update({ where: { id: control.id }, data: { nextTickAt: followingTick(config, now) } });
       if (!await tx.discoveryScan.findFirst({ where: { status: { in: ACTIVE } } })) await tx.discoveryScan.create({ data: { manual: false } });
     }
     if (await tx.discoveryScan.findFirst({ where: { status: "RUNNING" } })) return null;
-    const queued = await tx.discoveryScan.findFirst({ where: { status: "QUEUED" }, orderBy: { createdAt: "asc" } });
+    // Pausing board searches must not block an explicitly pasted role.
+    const queued = await tx.discoveryScan.findFirst({ where: { status: "QUEUED",
+      ...(config.paused ? { manual: true, input: { not: Prisma.AnyNull } } : {}) }, orderBy: { createdAt: "asc" } });
     if (!queued) return null;
     if (!queued.manual && !allowed) {
       await tx.discoveryScan.update({ where: { id: queued.id }, data: { status: "INTERRUPTED", finishedAt: now, error: "The session or scheduled window ended before this scan started." } });

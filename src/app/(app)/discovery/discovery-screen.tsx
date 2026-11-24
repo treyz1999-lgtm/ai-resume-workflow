@@ -11,12 +11,12 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action";
 import type { DiscoveryView, IntakeInput, PostingState } from "@/lib/discovery/contracts";
-import { pause, resume, stop, cancelScan, addPosting, changeState, removeSelection, retryScan, scanNow, selectPostings, startSession, stopSession } from "./actions";
+import { fetchRole, pause, resume, stop, cancelScan, addPosting, changeState, removeSelection, retryScan, scanNow, selectPostings, startSession, stopSession } from "./actions";
 import { DiscoveryConfiguration } from "./discovery-config";
 import { displayTime, eligible, PostingCard } from "./posting-card";
 
 const EMPTY_INTAKE: IntakeInput = { url: "", jd: "", company: "", role: "" };
-export function DiscoveryScreen({ view, initialIntake = EMPTY_INTAKE }: { view: DiscoveryView; initialIntake?: IntakeInput }) {
+export function DiscoveryScreen({ view, initialIntake = EMPTY_INTAKE, manualOnly = false }: { view: DiscoveryView; initialIntake?: IntakeInput; manualOnly?: boolean }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null);
@@ -43,11 +43,11 @@ export function DiscoveryScreen({ view, initialIntake = EMPTY_INTAKE }: { view: 
   const postings = view.postings.filter(posting => filter === "ALL" || posting.state === filter);
   const selectedIds = postings.filter(posting => checked.includes(posting.id) && eligible(posting)).map(posting => posting.id);
   return <>
-    <PageHeader title="Discover your next role" description="Find opportunities, compare them with your complete knowledge base, then choose which roles deserve a tailored resume. Discovery never starts tailoring automatically."
+    <PageHeader title={manualOnly ? "New application" : "Discover your next role"} description={manualOnly ? "Paste a posting link, fetch and review the job description, then analyze it with your knowledge base and select it for tailoring." : "Find opportunities, compare them with your complete knowledge base, then choose which roles deserve a tailored resume. Discovery never starts tailoring automatically."}
       actions={<Button variant="secondary" disabled={busy} onClick={() => router.refresh()}>Refresh results</Button>} />
     <div className="flex flex-col gap-7 p-5 sm:p-10">
       {notice && <p role={notice.error ? "alert" : "status"} className={notice.error ? "text-danger" : "text-ink"}>{notice.text}</p>}
-      <Card className="flex flex-col gap-4">
+      {!manualOnly && <><Card className="flex flex-col gap-4">
         <h2 className="text-xl font-medium">Run discovery</h2>
         <p className="text-sm text-muted">Quick sessions use your saved sources, model and interval. They run outside weekly windows too. At expiry, no new session scans start; a scan already running can finish.</p>
         <div className="flex flex-wrap gap-3"><Button disabled={busy || running || view.config.paused} onClick={() => run(() => scanNow({}), "Discovery scan queued.")}>{running ? "Scan in progress" : "Scan now"}</Button>
@@ -58,17 +58,28 @@ export function DiscoveryScreen({ view, initialIntake = EMPTY_INTAKE }: { view: 
           <Button variant="secondary" disabled={busy} onClick={() => run(() => view.config.paused ? resume({}) : pause({}), view.config.paused ? "Discovery resumed." : "Discovery paused. The current scan can finish.")}>{view.config.paused ? "Resume discovery" : "Pause discovery"}</Button>
           <Button variant="secondary" disabled={busy || (view.config.paused && !running)} onClick={() => run(() => stop({}), "Discovery stopped. Active work cancelled; saved findings retained.")}>Stop now</Button>
         </div>
-        <p className="text-sm text-muted">Pause prevents new scans and lets active work finish. Stop now also cancels active and queued scans. Resume restores your schedule; Scan now runs once. Quick sessions also resume discovery.</p>
+        <p className="text-sm text-muted">Pause prevents new board searches and lets active work finish. Manual posting analysis remains available. Stop now also cancels active and queued scans. Resume restores your schedule; Scan now runs once. Quick sessions also resume discovery.</p>
         <p className="text-sm">Discovery: {view.config.paused ? "paused" : "ready"} · Weekly schedule: {view.config.enabled ? "on" : "off"} · Quick session ends: {view.sessionUntil ? displayTime(view.sessionUntil) : "not active"} · Next check: {view.nextTickAt ? displayTime(view.nextTickAt) : "not scheduled"}</p>
       </Card>
-      <DiscoveryConfiguration initial={view.config} configured={view.configured} busy={busy} run={run} />
+      <DiscoveryConfiguration initial={view.config} configured={view.configured} busy={busy} run={run} /></>}
       <Card className="flex flex-col gap-4">
-        <h2 className="text-xl font-medium">Add a role</h2><p className="text-sm text-muted">Paste a public posting link or the entire job description. Pasted text is used when both are supplied. This prepares a discovery finding, not an application.</p>
+        <h2 className="text-xl font-medium">Add a role</h2><p className="text-sm text-muted">Paste a public posting link or the entire job description. Pasted text is used when both are supplied. Manual intake works even when discovery is paused. Review fetched text before analyzing.</p>
         <form className="flex flex-col gap-4" onSubmit={event => { event.preventDefault(); run(() => addPosting(intake), "Posting queued for discovery analysis.", () => setIntake(EMPTY_INTAKE)); }}>
-          <Input label="Posting URL" type="url" value={intake.url} maxLength={4000} onChange={event => setIntake({ ...intake, url: event.target.value })} />
+          <Input label="Posting URL" disabled={busy} type="text" value={intake.url} maxLength={4000} onChange={event => setIntake({ ...intake, url: event.target.value })} />
+          <div><Button type="button" variant="secondary" disabled={busy || !intake.url.trim() || Boolean(intake.jd.trim())} onClick={() => {
+            setNotice(null);
+            startTransition(async () => {
+              try {
+                const result = await fetchRole({ url: intake.url });
+                if (!result.ok) { setNotice({ error: true, text: result.error }); return; }
+                setIntake(current => ({ ...current, url: result.data.url, jd: result.data.jd }));
+                setNotice({ error: false, text: "Posting fetched. Review the description below, then click Analyze posting." });
+              } catch { setNotice({ error: true, text: "The posting could not be fetched. Your input is preserved; retry or paste the full job description." }); }
+            });
+          }}>Fetch posting</Button><p className="mt-2 text-sm text-muted">If the site blocks fetching, paste the full JD below. Clear existing description text before fetching another link.</p></div>
           <div className="grid gap-4 sm:grid-cols-2"><Input label="Company (optional)" value={intake.company} maxLength={2000} onChange={event => setIntake({ ...intake, company: event.target.value })} /><Input label="Role (optional)" value={intake.role} maxLength={2000} onChange={event => setIntake({ ...intake, role: event.target.value })} /></div>
-          <Textarea label="Full job description" rows={7} value={intake.jd} maxLength={500_000} onChange={event => setIntake({ ...intake, jd: event.target.value })} />
-          <div><Button type="submit" disabled={busy || view.config.paused || (!intake.url.trim() && !intake.jd.trim())}>Analyze posting</Button></div>
+          <Textarea disabled={busy} label="Full job description" rows={7} value={intake.jd} maxLength={500_000} onChange={event => setIntake({ ...intake, jd: event.target.value })} />
+          <div><Button type="submit" disabled={busy || (!intake.url.trim() && !intake.jd.trim())}>Analyze posting</Button></div>
         </form>
       </Card>
       <section className="flex flex-col gap-4" aria-labelledby="discovery-findings">
@@ -83,7 +94,7 @@ export function DiscoveryScreen({ view, initialIntake = EMPTY_INTAKE }: { view: 
       <Card className="flex flex-col gap-4"><h2 className="text-xl font-medium">Selected for tailoring</h2><p className="text-sm text-muted">Visit the <Link className="underline" href="/tailoring">tailoring queue</Link> to reorder waiting roles, follow progress and download verified documents.</p>
         {!view.selections.length ? <p>No roles selected yet.</p> : <ul className="flex flex-col gap-3">{view.selections.map(selection => <li key={selection.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3"><div><p className="font-medium">{selection.role || "Unknown role"} · {selection.company || "Unknown company"}</p><p className="text-sm text-muted">Selected {displayTime(selection.createdAt)}</p></div><Button variant="text" disabled={busy} onClick={() => run(() => removeSelection({ id: selection.id }), "Role removed from the tailoring selection list.")}>Remove {selection.role || "role"}</Button></li>)}</ul>}
       </Card>
-      <Card className="flex flex-col gap-4"><h2 className="text-xl font-medium">Scan history</h2>{!view.scans.length && <p>No scans yet.</p>}{view.scans.map(scan => <details key={scan.id} className="border-t border-line pt-3"><summary className="cursor-pointer">{scan.status.toLowerCase()} · {displayTime(scan.createdAt)}{scan.stage ? ` · ${scan.stage}` : ""}</summary><div className="mt-3 flex flex-col gap-2 text-sm">{scan.error && <p className="text-danger">{scan.error}</p>}{scan.sourceResults.map((source, index) => <p key={index}>{source.source}: {source.error || `${source.found} postings found`}</p>)}{["RUNNING", "QUEUED"].includes(scan.status) && <Button variant="secondary" disabled={busy} onClick={() => run(() => cancelScan({ id: scan.id }), "Scan cancelled. Its saved progress is retained.")}>Cancel scan</Button>}{scan.finishedAt && <p>Finished {displayTime(scan.finishedAt)}</p>}{["FAILED", "INTERRUPTED", "CANCELLED"].includes(scan.status) && <div><Button variant="secondary" disabled={busy || running || view.config.paused} onClick={() => run(() => retryScan({ id: scan.id }), "Scan queued for retry.")}>Retry scan</Button></div>}</div></details>)}</Card>
+      <Card className="flex flex-col gap-4"><h2 className="text-xl font-medium">Scan history</h2>{!view.scans.length && <p>No scans yet.</p>}{view.scans.map(scan => <details key={scan.id} className="border-t border-line pt-3"><summary className="cursor-pointer">{scan.status.toLowerCase()} · {displayTime(scan.createdAt)}{scan.stage ? ` · ${scan.stage}` : ""}</summary><div className="mt-3 flex flex-col gap-2 text-sm">{scan.error && <p className="text-danger">{scan.error}</p>}{scan.sourceResults.map((source, index) => <p key={index}>{source.source}: {source.error || `${source.found} postings found`}</p>)}{["RUNNING", "QUEUED"].includes(scan.status) && <Button variant="secondary" disabled={busy} onClick={() => run(() => cancelScan({ id: scan.id }), "Scan cancelled. Its saved progress is retained.")}>Cancel scan</Button>}{scan.finishedAt && <p>Finished {displayTime(scan.finishedAt)}</p>}{["FAILED", "INTERRUPTED", "CANCELLED"].includes(scan.status) && <div><Button variant="secondary" disabled={busy || running || (view.config.paused && !scan.manualInput)} onClick={() => run(() => retryScan({ id: scan.id }), "Scan queued for retry.")}>Retry scan</Button></div>}</div></details>)}</Card>
     </div>
   </>;
 }
