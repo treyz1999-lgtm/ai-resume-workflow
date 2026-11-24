@@ -11,7 +11,7 @@ import type { ActionResult } from "@/lib/action";
 import { saveConfig } from "./actions";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const SOURCES = [{ id: "JSEARCH", label: "JSearch" }, { id: "YC", label: "YC jobs" }, { id: "HN", label: "Hacker News hiring" }] as const;
+const SOURCES = [{ id: "WEB", label: "V5 web search · Codex" }, { id: "JSEARCH", label: "JSearch" }, { id: "YC", label: "YC jobs" }, { id: "HN", label: "Hacker News hiring" }] as const;
 const subscribe = () => () => {};
 const browserZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const serverZone = () => "UTC";
@@ -46,7 +46,7 @@ export function DiscoveryConfiguration({ initial, configured, busy, run }: {
       <p className="text-sm text-muted">A window ending before it starts continues overnight. Equal start and end times mean the whole selected day. Missed scans are skipped after downtime.</p>
       <div className="flex flex-col gap-2"><label htmlFor="discovery-interval" className="text-sm font-medium">Scan interval: {config.intervalMinutes} {config.intervalMinutes === 1 ? "minute" : "minutes"}</label><input id="discovery-interval" type="range" min={1} max={60} value={config.intervalMinutes} onChange={event => change({ intervalMinutes: Number(event.target.value) })} /></div>
       <fieldset className="flex flex-wrap gap-4"><legend className="mb-2 text-sm font-medium">Sources</legend>{SOURCES.map(source => <label className="flex items-center gap-2" key={source.id}><input type="checkbox" checked={config.sources.includes(source.id)} onChange={event => change({ sources: event.target.checked ? [...config.sources, source.id] : config.sources.filter(value => value !== source.id) })} />{source.label}</label>)}</fieldset>
-      <p className="text-sm text-muted">JSearch uses the key in <Link className="underline" href="/settings?section=jobs">Job search settings</Link>. YC and Hacker News use public sources.</p>
+      <p className="text-sm text-muted">V5 web search uses your Codex subscription to find public postings across job boards and employer career sites. It cannot access signed-in browser sessions; inaccessible boards are reported. JSearch optionally uses the key in <Link className="underline" href="/settings?section=jobs">Job search settings</Link>. YC and Hacker News use public sources. <Link href="/jobs?legacy=1" className="underline">Open legacy JSearch and search history</Link>.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Select label="Discovery model connection" value={config.provider} onChange={event => change({ provider: event.target.value as DiscoveryConfig["provider"] })}>
           <option value="codex">Codex · ChatGPT subscription</option><option value="configured">Configured API or local provider</option>

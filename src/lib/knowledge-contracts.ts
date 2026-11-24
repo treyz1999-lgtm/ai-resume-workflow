@@ -37,6 +37,10 @@ export const discoveryPreferencesSchema = z.object({
   minimumSalary: z.number().finite().nonnegative().max(1_000_000_000).nullable(),
   salaryCurrency: z.string().trim().regex(/^[A-Za-z]{3}$/, "Use a three-letter currency code.").transform(value => value.toUpperCase()),
   constraints: z.string().max(10_000),
+  experienceLevel: z.enum(["any", "early-career"]).optional(),
+  maximumExperienceYears: z.number().int().min(0).max(50).nullable().optional(),
+  includeUnknownExperience: z.boolean().optional(),
+  excludedLocations: list.optional(),
 }).strict();
 export const tailoringPreferencesSchema = z.object({
   track: z.enum(["auto", "swe", "data"]),

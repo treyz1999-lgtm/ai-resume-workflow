@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { DEFAULT_DISCOVERY_CONFIG, type DiscoveryPostingView, type DiscoveryView } from "@/lib/discovery/contracts";
 import { DiscoveryScreen } from "./discovery-screen";
 
-const mocks = vi.hoisted(() => ({ saveConfig: vi.fn(), startSession: vi.fn(), stopSession: vi.fn(), scanNow: vi.fn(), addPosting: vi.fn(), changeState: vi.fn(), selectPostings: vi.fn(), removeSelection: vi.fn(), retryScan: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ pause: vi.fn(), resume: vi.fn(), stop: vi.fn(), cancelScan: vi.fn(), saveConfig: vi.fn(), startSession: vi.fn(), stopSession: vi.fn(), scanNow: vi.fn(), addPosting: vi.fn(), changeState: vi.fn(), selectPostings: vi.fn(), removeSelection: vi.fn(), retryScan: vi.fn(), refresh: vi.fn() }));
 vi.mock("./actions", () => mocks);
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }), usePathname: () => "/discovery" }));
 const now = "2026-11-03T12:00:00.000Z";
@@ -135,4 +135,18 @@ it("does not allow a second manual scan while one is active", () => {
 it("does not render a dangerous source link", () => {
   render(<DiscoveryScreen view={view({ postings: [posting("unsafe", { url: "javascript:alert(1)" })] })} />);
   expect(screen.queryByRole("link", { name: "Open posting" })).not.toBeInTheDocument();
+});
+
+it("exposes pause and immediate stop without changing tailoring", async () => {
+  const { rerender } = render(<DiscoveryScreen view={view()} />);
+  await userEvent.click(screen.getByRole("button", { name: "Pause discovery" }));
+  expect(mocks.pause).toHaveBeenCalledWith({});
+  rerender(<DiscoveryScreen view={view({config: {...DEFAULT_DISCOVERY_CONFIG, paused:true}})} />);
+  expect(screen.getByRole("button", { name:"Scan now" })).toBeDisabled();
+  await userEvent.click(screen.getByRole("button", { name:"Resume discovery" }));
+  expect(mocks.resume).toHaveBeenCalledWith({});
+  rerender(<DiscoveryScreen view={view()} />);
+  await userEvent.click(screen.getByRole("button", { name:"Stop now" }));
+  expect(mocks.stop).toHaveBeenCalledWith({});
+  expect(mocks.selectPostings).not.toHaveBeenCalled();
 });

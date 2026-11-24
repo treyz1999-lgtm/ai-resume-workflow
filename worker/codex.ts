@@ -20,7 +20,8 @@ export class CodexAdapter implements ExecutionAdapter {
   private abortActive?: () => void;
   constructor(private factory: (cwd: string) => RpcClient = startCodex,
     private root = process.env.EXECUTION_ROOT ?? "/work", private turnTimeoutMs = 180_000,
-    private validateResult: (value: unknown) => unknown = value => diagnostic.parse(value)) {}
+    private validateResult: (value: unknown) => unknown = value => diagnostic.parse(value),
+    private webSearch = false) {}
   private connect(): Promise<RpcClient> {
     if (this.ready) return this.ready;
     this.ready = (async () => {
@@ -83,7 +84,7 @@ export class CodexAdapter implements ExecutionAdapter {
       progress({ type: "stage", message: "Starting subscription-authenticated Codex task" });
       const cwd = join(this.root, "diagnostic");
       const params = { ...(context.model ? { model: context.model } : {}), cwd, approvalPolicy: "never", sandbox: "read-only",
-        config: { "features.shell_tool": false, "features.unified_exec": false, "features.multi_agent": false, "web_search": "disabled" } };
+        config: { "features.shell_tool": false, "features.unified_exec": false, "features.multi_agent": false, "web_search": this.webSearch ? "live" : "disabled" } };
       const response = await client.request<{ thread: { id: string } }>(context.threadId ? "thread/resume" : "thread/start",
         { ...params, ...(context.threadId ? { threadId: context.threadId } : {}) });
       const threadId = response.thread.id;
@@ -102,6 +103,7 @@ export class CodexAdapter implements ExecutionAdapter {
       let output = "";
       let finalMessage = "";
       let aborted = false;
+      let searched = false;
       const early: Turn[] = [];
       const finish = (error?: Error, result?: ExecutionResult) => {
         if (settled) return;
@@ -120,6 +122,7 @@ export class CodexAdapter implements ExecutionAdapter {
         if (turn.id !== turnId) return;
         if (turn.status === "interrupted") return finish(new ExecutionError("cancelled"));
         if (turn.status !== "completed") return finish(executionError(turn.error));
+        if (this.webSearch && !searched && !turn.items?.some(item => item.type === "webSearch")) return finish(new ExecutionError("invalid-result"));
         const final = turn.items?.filter(item => item.type === "agentMessage" && item.text).at(-1)?.text;
         const text = final || finalMessage || output;
         try {
@@ -137,6 +140,7 @@ export class CodexAdapter implements ExecutionAdapter {
           progress({ type: "delta", message: data.delta });
         } else if (event.method === "item/completed") {
           const item = data.item as { type?: string; text?: string } | undefined;
+          if (item?.type === "webSearch") searched = true;
           if (item?.type === "agentMessage" && typeof item.text === "string") {
             if (item.text.length > 64_000) { interrupt(); finish(new ExecutionError("invalid-result")); client.close(); return; }
             finalMessage = item.text;

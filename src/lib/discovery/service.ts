@@ -24,7 +24,7 @@ export async function loadDiscovery(now = new Date()): Promise<DiscoveryView> {
   const config = configFrom(control?.config);
   const sessionUntil = control?.sessionUntil && control.sessionUntil > now ? control.sessionUntil : null;
   const nextTick = control?.nextTickAt;
-  const nextTickAt = nextTick && nextTick > now && discoveryAllowed(config, sessionUntil, now)
+  const nextTickAt = !config.paused && nextTick && nextTick > now && discoveryAllowed(config, sessionUntil, now)
     && discoveryAllowed(config, sessionUntil, nextTick) ? nextTick.toISOString() : null;
   return {
     config, configured: Boolean(control), sessionUntil: sessionUntil?.toISOString() ?? null, nextTickAt,
@@ -40,6 +40,9 @@ export async function saveDiscoveryConfig(input: DiscoveryConfig): Promise<void>
   const config = discoveryConfigSchema.parse(input);
   await prisma.$transaction(async tx => {
     await scanLock(tx);
+    const existing = await tx.discoveryControl.findUnique({ where: { id: "discovery" } });
+    // A stale settings form cannot undo a concurrent pause or resume.
+    config.paused = configFrom(existing?.config).paused;
     await tx.discoveryControl.upsert({ where: { id: "discovery" }, create: { id: "discovery", config: json(config), nextTickAt: new Date() }, update: { config: json(config), nextTickAt: new Date() } });
   });
 }
@@ -48,14 +51,55 @@ export async function startDiscoverySession(hours: 1 | 2 | 3): Promise<void> {
   z.union([z.literal(1), z.literal(2), z.literal(3)]).parse(hours);
   const now = new Date();
   await prisma.$transaction(async tx => {
-    await scanLock(tx); await ensureControl(tx);
-    await tx.discoveryControl.update({ where: { id: "discovery" }, data: { sessionUntil: new Date(now.getTime() + hours * 3_600_000), nextTickAt: now } });
+    await scanLock(tx); const control = await ensureControl(tx);
+    await tx.discoveryControl.update({ where: { id: "discovery" }, data: { config: json({ ...configFrom(control.config), paused: false }), sessionUntil: new Date(now.getTime() + hours * 3_600_000), nextTickAt: now } });
   });
 }
 export async function stopDiscoverySession(): Promise<void> {
   await prisma.$transaction(async tx => {
     await scanLock(tx);
     await tx.discoveryControl.updateMany({ where: { id: "discovery" }, data: { sessionUntil: null } });
+  });
+}
+
+/** Pause preserves pending work and the schedule; any active scan may finish. */
+export async function pauseDiscovery(): Promise<void> {
+  await setDiscoveryPaused(true);
+}
+export async function resumeDiscovery(): Promise<void> {
+  await setDiscoveryPaused(false);
+}
+async function setDiscoveryPaused(paused: boolean): Promise<void> {
+  await prisma.$transaction(async tx => {
+    await scanLock(tx);
+    const control = await ensureControl(tx);
+    await tx.discoveryControl.update({ where: { id: control.id }, data: {
+      config: json({ ...configFrom(control.config), paused }), nextTickAt: paused ? null : new Date(),
+    } });
+  });
+}
+
+/** Revoking ownership fences writes immediately; the worker aborts its request on its next heartbeat. */
+export async function cancelDiscoveryScan(id: string): Promise<void> {
+  const scanId = z.string().min(1).max(200).parse(id);
+  await prisma.$transaction(async tx => {
+    await scanLock(tx);
+    const result = await tx.discoveryScan.updateMany({ where: { id: scanId, status: { in: ["QUEUED", "RUNNING"] } },
+      data: { status: "CANCELLED", stage: "Cancelled by user", owner: null, leaseUntil: null, finishedAt: new Date(), error: null } });
+    if (!result.count) throw new ActionError("This scan is no longer queued or running.");
+  });
+}
+
+/** Stop everything now while retaining findings, checkpoints, and schedule configuration. */
+export async function stopDiscovery(): Promise<void> {
+  await prisma.$transaction(async tx => {
+    await scanLock(tx);
+    const control = await ensureControl(tx);
+    await tx.discoveryControl.update({ where: { id: control.id }, data: {
+      config: json({ ...configFrom(control.config), paused: true }), sessionUntil: null, nextTickAt: null,
+    } });
+    await tx.discoveryScan.updateMany({ where: { status: { in: ["QUEUED", "RUNNING"] } },
+      data: { status: "CANCELLED", stage: "Stopped by user", owner: null, leaseUntil: null, finishedAt: new Date(), error: null } });
   });
 }
 export const requestDiscoveryScan = (): Promise<void> => enqueueScan();

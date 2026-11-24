@@ -37,3 +37,19 @@ test("a pasted role can be reviewed, saved and explicitly selected for tailoring
   await page.getByLabel("Show roles").selectOption("DISMISSED");
   await expect(page.getByRole("button", { name: "Restore role" })).toBeVisible();
 });
+
+test("primary search routes share V5 discovery with persistent pause and stop controls", async ({ page }) => {
+  for (const route of ["/jobs", "/new", "/discovery"]) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { name: "Discover your next role", exact:true })).toBeVisible();
+  }
+  await page.getByRole("button", {name:"Pause discovery",exact:true}).click();
+  await expect(page.getByRole("button", {name:"Resume discovery",exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", {name:"Scan now",exact:true})).toBeDisabled();
+  await page.getByRole("button", {name:"Resume discovery",exact:true}).click();
+  await expect(page.getByRole("button", {name:"Scan now",exact:true})).toBeEnabled();
+  await page.getByRole("button", {name:"Stop now",exact:true}).click();
+  await expect(page.getByRole("button", {name:"Resume discovery",exact:true})).toBeVisible();
+  expect(await sql('SELECT count(*)::int AS count FROM "DiscoveryScan"')).toEqual([{count:0}]);
+});

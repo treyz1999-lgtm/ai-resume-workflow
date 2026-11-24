@@ -11,6 +11,7 @@ import { CodexAdapter } from "./codex";
 import { handleTailoringAI } from "./tailoring-ai";
 import { handleTailoringRender } from "./tailoring-render";
 import { handleStatusReport } from "./status-report";
+import { handleWebSearch, closeWebSearch } from "./web-search";
 import { compileSample, compileDocument, artifactPath } from "./latex";
 import { renderV5Resume, renderCoverLetter, fictionalResume, fictionalCoverLetter } from "../src/lib/templates/v5";
 import { ExecutionStore, view } from "./store";
@@ -55,7 +56,7 @@ const server = createServer(async (request, response) => {
   const path = request.url ?? "";
   const method = request.method;
   try {
-      if (await handleTailoringAI(request, response) || await handleTailoringRender(request, response) || await handleStatusReport(request, response)) return;
+      if (await handleTailoringAI(request, response) || await handleTailoringRender(request, response) || await handleStatusReport(request, response) || await handleWebSearch(request, response)) return;
     if (method === "POST" && path === "/discovery/analyze") {
       const input = z.object({ posting: discoveryInputSchema, kb: z.unknown(), model: z.string().max(160) }).strict().parse(await body(request, DISCOVERY_CONTEXT_MAX_BYTES));
       const prompt = discoveryPrompt(input.posting, input.kb);
@@ -122,7 +123,7 @@ const server = createServer(async (request, response) => {
       if (path === "/login") return json(response, await adapter.login());
       if (path === "/logout") {
         await store.cancelAll();
-        discoveryAdapter.close(); await adapter.logout(); return json(response, { ok: true });
+        discoveryAdapter.close(); closeWebSearch(); await adapter.logout(); return json(response, { ok: true });
       }
       if (path === "/latex/sample" || ["/templates/swe", "/templates/data", "/templates/cover-letter"].includes(path)) {
         if (compiling) return json(response, { error: "A sample is already compiling." }, 409);
@@ -161,7 +162,7 @@ async function start() {
 }
 async function shutdown() {
   if (closing) return;
-  closing = true; runner.stop(); server.close(); adapter.close(); discoveryAdapter.close();
+  closing = true; runner.stop(); server.close(); adapter.close(); discoveryAdapter.close(); closeWebSearch();
   // Let cancellation record the interrupted state; the lease recovers a hard kill.
   const deadline = setTimeout(() => process.exit(1), 10_000);
   await activeTick?.catch(() => {});

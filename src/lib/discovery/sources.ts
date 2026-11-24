@@ -3,6 +3,7 @@ import { ActionError } from "@/lib/action";
 import { createHash } from "node:crypto";
 import { fetchPosting } from "@/lib/posting-fetch";
 import { matchesPreferences } from "./preferences";
+import { collectWebDiscovery } from "./web-search";
 import { searchPostings, postingDetails } from "@/lib/job-search";
 import { credentialsFor, loadJobSearchConfig, requestContext } from "@/lib/job-search/config";
 import { EMPTY_QUERY, postingText } from "@/lib/job-search/search";
@@ -11,24 +12,10 @@ import { fetchHnStartups } from "@/lib/startups/sources/hn";
 import { placeOf } from "@/lib/startups/place";
 import type { FoundStartup } from "@/lib/startups/types";
 import type { DiscoveryPreferences } from "@/lib/knowledge-contracts";
-import { discoveryInputSchema, intakeSchema, type DiscoveryConfig, type DiscoveryInput, type IntakeInput, type PostingEvidence, type SourceResult } from "./contracts";
+import { discoveryInputSchema, intakeSchema, type DiscoveryConfig, type DiscoveryInput, type IntakeInput, type SourceResult } from "./contracts";
 
-export function dateEvidence(raw: string, observedAt = new Date(), absolute?: string | null): PostingEvidence {
-  const base: PostingEvidence = { raw, observedAt: observedAt.toISOString(), kind: "unknown", date: null, earliest: null, latest: null, reposted: /reposted/i.test(raw) };
-  const iso = absolute || raw.match(/\b\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z)?\b/)?.[0];
-  if (iso && Number.isFinite(Date.parse(iso))) return { ...base, kind: "absolute", date: new Date(iso).toISOString() };
-  const relative = raw.match(/\b(\d+)\s+(hour|day|week|month)s?\s+ago\b/i);
-  if (relative) {
-    const unit = { hour: 3_600_000, day: 86_400_000, week: 604_800_000, month: 2_678_400_000 }[relative[2].toLowerCase()]!;
-    const latest = observedAt.getTime() - Number(relative[1]) * unit;
-    return { ...base, kind: "relative", earliest: new Date(latest - unit).toISOString(), latest: new Date(latest).toISOString() };
-  }
-  return base;
-}
-function evidenceFromText(text: string): PostingEvidence {
-  const raw = text.match(/\b(?:reposted|posted|datePosted)\b[^\n·|]*/i)?.[0].trim() ?? "";
-  return dateEvidence(raw.slice(0, 2000));
-}
+export { dateEvidence } from "./date-evidence";
+import { dateEvidence, evidenceFromText } from "./date-evidence";
 export async function resolveIntake(input: IntakeInput, signal: AbortSignal): Promise<DiscoveryInput> {
   const value = intakeSchema.parse(input); signal.throwIfAborted();
   let jd = value.jd.trim(); let url = value.url.trim();
@@ -58,8 +45,10 @@ async function fromStartup(startup: FoundStartup, signal: AbortSignal): Promise<
 /** Explicit exclusions are exact company constraints. Role titles are search hints, not exact filters. */
 export async function collectDiscovery(config: DiscoveryConfig, preferences: DiscoveryPreferences, signal: AbortSignal): Promise<{ postings: DiscoveryInput[]; sources: SourceResult[] }> {
   const sources = [...new Set(config.sources)];
+  let webSources: SourceResult[] = [];
   const outcomes = await Promise.allSettled(sources.map(async source => {
     signal.throwIfAborted();
+    if (source === "WEB") { const result = await collectWebDiscovery(config, preferences, signal); webSources = result.sources; return result.postings; }
     if (source === "JSEARCH") {
       const jobConfig = await loadJobSearchConfig();
       if (jobConfig.source !== "JSEARCH") throw new ActionError("Select JSearch and configure its key in Settings → Job search.");
@@ -77,7 +66,6 @@ export async function collectDiscovery(config: DiscoveryConfig, preferences: Dis
           const page = await searchPostings("JSEARCH", credentials, { ...EMPTY_QUERY, keywords: role, place, country: config.country,
             remoteOnly: preferences.workArrangements.length === 1 && preferences.workArrangements[0].toLowerCase() === "remote", postedWithin: "month" }, null, context);
           for (const posting of page.postings) {
-            if (!matchesPreferences({ company: posting.company, role: posting.title, remote: posting.remote, location: posting.place, salary: posting.salary }, preferences)) continue;
             const key = JSON.stringify([posting.externalId, posting.postedAt]);
             if (seen.has(key)) continue;
             seen.add(key);
@@ -89,6 +77,7 @@ export async function collectDiscovery(config: DiscoveryConfig, preferences: Dis
                 if (fetched.ok) { description = fetched.text; complete = true; }
               }
             }
+            if (!matchesPreferences({ company: posting.company, role: posting.title, remote: posting.remote, location: posting.place, salary: posting.salary, jd: description }, { ...preferences, includeUnknownExperience: true })) continue;
             results.push(discoveryInputSchema.parse({ source, externalId: posting.externalId, url: posting.url, company: posting.company,
               role: posting.title, jd: postingText({ ...posting, description }), complete,
               postingEvidence: dateEvidence(posting.postedAt ?? "", new Date(), posting.postedAt) }));
@@ -103,7 +92,7 @@ export async function collectDiscovery(config: DiscoveryConfig, preferences: Dis
     for (const startup of startups) {
       signal.throwIfAborted();
       const salary = startup.details.split("\n").find(line => /salary|compensation/i.test(line)) ?? "";
-      if (!matchesPreferences({ company: startup.company, role: startup.roles.join(" / "), remote: startup.remote, location: startup.location, salary }, preferences)) continue;
+      if (!matchesPreferences({ company: startup.company, role: startup.roles.join(" / "), remote: startup.remote, location: startup.location, salary, jd: startup.details }, { ...preferences, includeUnknownExperience: true })) continue;
       result.push(await fromStartup(startup, signal));
     }
     return result;
@@ -111,7 +100,7 @@ export async function collectDiscovery(config: DiscoveryConfig, preferences: Dis
   signal.throwIfAborted();
   return {
     postings: outcomes.flatMap(result => result.status === "fulfilled" ? result.value : []),
-    sources: outcomes.map((result, index) => ({ source: sources[index], found: result.status === "fulfilled" ? result.value.length : 0,
-      error: result.status === "fulfilled" ? null : result.reason instanceof ActionError ? result.reason.message : sources[index] === "JSEARCH" ? "JSearch failed. Check its source selection, credentials, country and discovery role preferences; retry the scan." : `${sources[index]} could not be reached or returned an invalid posting. Retry the scan.` })),
+    sources: [...webSources, ...outcomes.map((result, index) => ({ source: sources[index], found: result.status === "fulfilled" ? result.value.length : 0,
+      error: result.status === "fulfilled" ? null : result.reason instanceof ActionError ? result.reason.message : sources[index] === "JSEARCH" ? "JSearch failed. Check its source selection, credentials, country and discovery role preferences; retry the scan." : `${sources[index]} could not be reached or returned an invalid posting. Retry the scan.` })).filter(result => result.source !== "WEB" || result.error)],
   };
 }

@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { action } from "@/lib/action";
 import { discoveryConfigSchema, intakeSchema, postingStateSchema } from "@/lib/discovery/contracts";
-import { saveDiscoveryConfig, startDiscoverySession, stopDiscoverySession, requestDiscoveryScan, intakePosting, setDiscoveryState, selectForTailoring, removeTailoringSelection, retryDiscoveryScan } from "@/lib/discovery/service";
+import { pauseDiscovery, resumeDiscovery, stopDiscovery, cancelDiscoveryScan, saveDiscoveryConfig, startDiscoverySession, stopDiscoverySession, requestDiscoveryScan, intakePosting, setDiscoveryState, selectForTailoring, removeTailoringSelection, retryDiscoveryScan } from "@/lib/discovery/service";
 
 const ids = z.array(z.string().min(1).max(200)).min(1).max(100);
 const empty = z.object({}).strict();
-function refresh() { revalidatePath("/discovery"); }
+function refresh() { revalidatePath("/discovery"); revalidatePath("/jobs"); revalidatePath("/new"); }
+export const pause = action(empty, async () => { await pauseDiscovery(); refresh(); return null; });
+export const resume = action(empty, async () => { await resumeDiscovery(); refresh(); return null; });
+export const stop = action(empty, async () => { await stopDiscovery(); refresh(); return null; });
+export const cancelScan = action(z.object({ id: z.string().min(1).max(200) }).strict(), async ({ id }) => { await cancelDiscoveryScan(id); refresh(); return null; });
 export const saveConfig = action(discoveryConfigSchema, async input => { await saveDiscoveryConfig(input); refresh(); return null; });
 export const startSession = action(z.object({ hours: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(), async ({ hours }) => { await startDiscoverySession(hours); refresh(); return null; });
 export const stopSession = action(empty, async () => { await stopDiscoverySession(); refresh(); return null; });

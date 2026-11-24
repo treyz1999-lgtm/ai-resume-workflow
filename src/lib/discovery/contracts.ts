@@ -5,16 +5,17 @@ const nullableText = text.nullable();
 export const postingStateSchema = z.enum(["NEW", "SAVED", "DISMISSED"]);
 export type PostingState = z.infer<typeof postingStateSchema>;
 export const discoveryConfigSchema = z.object({
+  paused: z.boolean().default(false),
   enabled: z.boolean(), intervalMinutes: z.number().int().min(1).max(60),
   timeZone: z.string().max(100).refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }, "Use an IANA timezone."),
   days: z.array(z.number().int().min(0).max(6)).max(7),
   startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  sources: z.array(z.enum(["JSEARCH", "YC", "HN"])).max(3),
+  sources: z.array(z.enum(["JSEARCH", "YC", "HN", "WEB"])).max(4),
   country: z.string().regex(/^[a-z]{2}$/),
   provider: z.enum(["codex", "configured"]), model: z.string().trim().max(160),
 }).strict();
 export type DiscoveryConfig = z.infer<typeof discoveryConfigSchema>;
-export const DEFAULT_DISCOVERY_CONFIG: DiscoveryConfig = { enabled: false, intervalMinutes: 10, timeZone: "UTC", days: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "17:00", sources: ["JSEARCH", "YC", "HN"], country: "us", provider: "codex", model: "" };
+export const DEFAULT_DISCOVERY_CONFIG: DiscoveryConfig = { paused: false, enabled: false, intervalMinutes: 10, timeZone: "UTC", days: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "17:00", sources: ["JSEARCH", "YC", "HN"], country: "us", provider: "codex", model: "" };
 
 export const postingEvidenceSchema = z.object({
   raw: z.string().max(2000), kind: z.enum(["absolute", "relative", "unknown"]),
@@ -23,7 +24,7 @@ export const postingEvidenceSchema = z.object({
 }).strict();
 export type PostingEvidence = z.infer<typeof postingEvidenceSchema>;
 export const discoveryInputSchema = z.object({
-  source: z.enum(["JSEARCH", "YC", "HN", "URL", "TEXT"]), externalId: z.string().max(2000),
+  source: z.enum(["JSEARCH", "YC", "HN", "WEB", "URL", "TEXT"]), externalId: z.string().max(2000),
   url: z.string().max(4000).refine(value => !value || /^https?:\/\//i.test(value)),
   company: text, role: text, jd: z.string().min(1).max(500_000), complete: z.boolean(),
   postingEvidence: postingEvidenceSchema,

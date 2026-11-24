@@ -7,8 +7,10 @@ import { discoveryPreferencesSchema } from "@/lib/knowledge-contracts";
 import { prisma } from "@/lib/prisma";
 import { analyzePosting } from "./analysis";
 import { collectDiscovery, resolveIntake } from "./sources";
-import { discoveryConfigSchema, discoveryInputSchema, intakeSchema, type DiscoveryInput, type SourceResult } from "./contracts";
+import { discoveryConfigSchema, discoveryInputSchema, intakeSchema, type DiscoveryAnalysis, type DiscoveryInput, type SourceResult } from "./contracts";
+import type { DiscoveryPreferences } from "../knowledge-contracts";
 import { coverageReport } from "./coverage";
+import { matchesPreferences } from "./preferences";
 import { claimScan, configFrom, json, owned, rememberPosting, renewLease } from "./store";
 
 // Config is an immutable envelope, so retries use both the same provider and discovery preferences.
@@ -16,6 +18,11 @@ const contextSchema = z.object({ discovery: discoveryConfigSchema, preferences: 
 const checkpointSchema = z.object({ items: z.array(z.object({ posting: discoveryInputSchema, id: z.string().optional(), done: z.boolean() })) });
 type Checkpoint = z.infer<typeof checkpointSchema>;
 const safeError = (error: unknown) => error instanceof ActionError ? error.message : "Discovery could not complete this step. Check your connection and retry the saved scan.";
+function eligibleFinding(fields: DiscoveryAnalysis["extracted"], row: { company: string; role: string; jd: string }, preferences: DiscoveryPreferences) {
+  return matchesPreferences({ company: fields.company ?? row.company, role: fields.role ?? row.role,
+    location: [fields.location, fields.arrangement].filter(Boolean).join(" · "), remote: fields.arrangement?.toLowerCase() === "remote" ? true : null,
+    salary: fields.salaryOriginal ?? "", jd: row.jd }, preferences);
+}
 
 /** Durable per-posting checkpoints and lease fencing make a retry reuse its observations. */
 export async function executeScan(scan: DiscoveryScan): Promise<void> {
@@ -26,7 +33,7 @@ export async function executeScan(scan: DiscoveryScan): Promise<void> {
     if (renewing) return;
     renewing = true;
     void renewLease(scan.id, owner).then(ok => { if (!ok) abort.abort(); }).catch(() => abort.abort()).finally(() => { renewing = false; });
-  }, 20_000);
+  }, 1_000);
   timer.unref?.();
   const write = <T>(work: Parameters<typeof owned<T>>[2]) => owned(scan.id, owner, work);
   try {
@@ -74,15 +81,23 @@ export async function executeScan(scan: DiscoveryScan): Promise<void> {
       const alreadyAnalyzed = row.kbSnapshotId === snapshot.id && row.coverage !== null && !row.analysisError;
       if (row.state === "DISMISSED" || alreadyAnalyzed) {
         item.done = true;
-        await write(tx => tx.discoveryScan.update({ where: { id: scan.id }, data: { checkpoint: json(checkpoint) } }));
+        await write(async tx => {
+          if (!scan.input && alreadyAnalyzed && row.extracted && row.state === "NEW"
+            && !eligibleFinding(row.extracted as DiscoveryAnalysis["extracted"], row, config!.preferences)) {
+            await tx.discoveryPosting.update({ where: { id: row.id }, data: { state: "DISMISSED" } });
+          }
+          await tx.discoveryScan.update({ where: { id: scan.id }, data: { checkpoint: json(checkpoint) } });
+        });
         continue;
       }
       try {
         const result = await analyzePosting({ ...item.posting, company: row.company, role: row.role, jd: row.jd, complete: row.complete }, snapshot.payload, config.discovery, abort.signal);
+        const eligible = Boolean(scan.input) || eligibleFinding(result.extracted, row, config.preferences);
         item.done = true;
         await write(async tx => {
           await tx.discoveryPosting.update({ where: { id: row.id }, data: { extracted: json(result.extracted), coverage: json(coverageReport(result)), kbSnapshotId: snapshot.id,
-            company: row.company || result.extracted.company || "", role: row.role || result.extracted.role || "", analysisError: null } });
+            company: row.company || result.extracted.company || "", role: row.role || result.extracted.role || "", analysisError: null,
+            ...(!eligible && row.state === "NEW" ? { state: "DISMISSED" } : {}) } });
           await tx.discoveryScan.update({ where: { id: scan.id }, data: { checkpoint: json(checkpoint) } });
         });
       } catch (error) {

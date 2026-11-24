@@ -9,12 +9,14 @@ import { loadSettings } from "@/lib/settings-data";
 import { getStartup, startupPostingText } from "@/lib/startups/store";
 
 import { NewApplication } from "./new-application";
+import { DiscoveryScreen } from "../discovery/discovery-screen";
+import { loadDiscovery } from "@/lib/discovery/service";
 
 export const metadata: Metadata = { title: "New application" };
 
 /** Posting → details and match → tailored documents (PRD §6.4). Nothing is created until the last step. */
 export default async function NewApplicationPage({ searchParams }: PageProps<"/new">) {
-  const { fresh, posting, startup: startupId } = await searchParams;
+  const { fresh, posting, startup: startupId, legacy } = await searchParams;
   const [aiReady, writeInClaude, applications, settings, fromFindJobs, startup] = await Promise.all([
     isAiConfigured(),
     isAiUsable().then(handsOffToClaude),
@@ -25,6 +27,11 @@ export default async function NewApplicationPage({ searchParams }: PageProps<"/n
     // "Write to them" on Startups (#222): what's known about the startup, without its addresses.
     typeof startupId === "string" ? getStartup(startupId) : null,
   ]);
+  if (legacy !== "1") return <DiscoveryScreen view={await loadDiscovery()} initialIntake={{
+    url: fromFindJobs?.url ?? startup?.links[0]?.url ?? startup?.website ?? "",
+    jd: fromFindJobs ? postingText(fromFindJobs) : startup ? startupPostingText(startup) : "",
+    company: fromFindJobs?.company ?? startup?.company ?? "", role: fromFindJobs?.title ?? "",
+  }} />;
   return (
     <NewApplication
       aiReady={aiReady}

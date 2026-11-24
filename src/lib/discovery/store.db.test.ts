@@ -3,7 +3,7 @@ import type { createTestClient } from "@/test/db";
 import { resetDatabase } from "@/test/db";
 import { claimScan, enqueueScan, json, LEASE_MS, owned, rememberPosting, renewLease, retryScan } from "./store";
 import { DEFAULT_DISCOVERY_CONFIG, type DiscoveryInput } from "./contracts";
-import { loadDiscovery, removeTailoringSelection, saveDiscoveryConfig, selectForTailoring, setDiscoveryState, startDiscoverySession, stopDiscoverySession } from "./service";
+import { cancelDiscoveryScan, loadDiscovery, pauseDiscovery, removeTailoringSelection, resumeDiscovery, saveDiscoveryConfig, selectForTailoring, setDiscoveryState, startDiscoverySession, stopDiscovery, stopDiscoverySession } from "./service";
 
 const db = vi.hoisted(() => ({ client: undefined as ReturnType<typeof createTestClient> | undefined }));
 vi.mock("@/lib/prisma", async () => { const { createTestClient } = await import("@/test/db"); db.client = createTestClient(); return { prisma: db.client }; });
@@ -13,6 +13,47 @@ afterAll(() => prisma().$disconnect());
 const now = new Date("2026-11-03T17:00:00.000Z");
 const posting: DiscoveryInput = { source: "JSEARCH", externalId: "example-role", url: "https://example.com/jobs/1", company: "Fictional Labs", role: "Engineer", jd: "SQL required", complete: true,
   postingEvidence: { kind: "absolute", raw: "November 1", date: "2026-11-01T00:00:00.000Z", observedAt: now.toISOString(), earliest: null, latest: null, reposted: false } };
+
+it("pause preserves queued work and settings across saves until explicit resume", async () => {
+  await enqueueScan(undefined, now);
+  await pauseDiscovery();
+  await saveDiscoveryConfig({ ...DEFAULT_DISCOVERY_CONFIG, enabled: true });
+  expect((await loadDiscovery()).config.paused).toBe(true);
+  expect(await claimScan(now)).toBeNull();
+  expect(await prisma().discoveryScan.findFirstOrThrow()).toMatchObject({ status: "QUEUED" });
+  await resumeDiscovery();
+  expect((await loadDiscovery()).config.paused).toBe(false);
+  expect(await claimScan(now)).toMatchObject({ status: "RUNNING", manual: true });
+});
+
+it("pause lets an active scan finish; stop cancels and fences it without losing checkpoints", async () => {
+  await enqueueScan(undefined, now);
+  const scan = (await claimScan(now))!;
+  await prisma().discoveryScan.update({ where: { id: scan.id }, data: { checkpoint: { items: [] } } });
+  await pauseDiscovery();
+  expect(await renewLease(scan.id, scan.owner!, now)).toBe(true);
+  await stopDiscovery();
+  expect(await renewLease(scan.id, scan.owner!, now)).toBe(false);
+  await expect(owned(scan.id, scan.owner!, async tx => tx.discoveryPosting.deleteMany(), now)).rejects.toThrow("lease lost");
+  expect(await prisma().discoveryScan.findUniqueOrThrow({ where: { id: scan.id } })).toMatchObject({ status: "CANCELLED", checkpoint: { items: [] }, owner: null });
+  expect(await loadDiscovery()).toMatchObject({ config: { paused: true }, sessionUntil: null, nextTickAt: null });
+  await retryScan(scan.id, now);
+  expect(await claimScan(now)).toBeNull();
+  await resumeDiscovery();
+  expect(await claimScan(now)).toMatchObject({ id: scan.id, status: "RUNNING", checkpoint: { items: [] } });
+});
+
+it("individual cancellation preserves schedule and a new quick session explicitly resumes", async () => {
+  await startDiscoverySession(1);
+  await enqueueScan(undefined, now);
+  const scan = await prisma().discoveryScan.findFirstOrThrow();
+  await cancelDiscoveryScan(scan.id);
+  expect(await loadDiscovery()).toMatchObject({ config: { paused: false }, sessionUntil: expect.any(String) });
+  await expect(cancelDiscoveryScan(scan.id)).rejects.toThrow("no longer queued or running");
+  await stopDiscovery();
+  await startDiscoverySession(1);
+  expect((await loadDiscovery()).config.paused).toBe(false);
+});
 
 it("concurrent manual requests and claims create one active scan and no applications", async () => {
   await Promise.all(Array.from({ length: 5 }, () => enqueueScan(undefined, now)));

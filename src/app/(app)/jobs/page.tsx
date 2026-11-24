@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { userTimeZone } from "@/lib/time-zone";
 
 import { JobsScreen } from "./jobs-screen";
+import { loadDiscovery } from "@/lib/discovery/service";
+import { DiscoveryScreen } from "../discovery/discovery-screen";
 
 export const metadata: Metadata = { title: "Find jobs" };
 
@@ -23,6 +25,11 @@ export const metadata: Metadata = { title: "Find jobs" };
  */
 export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   const params = await searchParams;
+  // The primary search entry uses the same subscription-backed V5 workflow.
+  // Historical upstream searches remain accessible through their saved URLs.
+  if (params.legacy !== "1" && !params.search && !params.view && !params.q) {
+    return <DiscoveryScreen view={await loadDiscovery()} />;
+  }
   const view = viewFromParams(params);
   const typed = queryFromParams(params);
   const searchId = typeof params.search === "string" ? params.search : undefined;

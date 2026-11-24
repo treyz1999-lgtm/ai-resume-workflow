@@ -92,3 +92,21 @@ it("stores flexible title lists, explicit constraints and presentation overrides
   })));
   expect(within(screen.getByRole("form", { name: "Discovery and tailoring preferences" })).getByRole("status")).toHaveTextContent("Preferences saved");
 });
+
+it("saves explicit experience and exclusion controls without overwriting free-text preferences", async () => {
+  render(<WorkflowPreferencesEditor themes={[]} initial={{
+    discovery: { roles: ["Software Engineer"], locations: ["United States"], workArrangements: [], excludedCompanies: [], minimumSalary: 60000, salaryCurrency: "USD", constraints: "Prefer early career; salary per year." },
+    tailoring: { track: "auto", themeId: null, coverLetter: false },
+  }} />);
+  expect(screen.getByLabelText("Include roles with unspecified experience")).toBeChecked();
+  await userEvent.selectOptions(screen.getByLabelText("Experience level"), "early-career");
+  await userEvent.type(screen.getByLabelText("Maximum required experience (years)"), "3");
+  await userEvent.click(screen.getByLabelText("Include roles with unspecified experience"));
+  await userEvent.type(screen.getByLabelText("Excluded locations"), "Tucson\nDenver");
+  await userEvent.click(screen.getByRole("button", { name: "Save preferences" }));
+  await waitFor(() => expect(savePreferences).toHaveBeenCalledWith({
+    discovery: expect.objectContaining({ experienceLevel: "early-career", maximumExperienceYears: 3, includeUnknownExperience: false,
+      excludedLocations: ["Tucson", "Denver"], constraints: "Prefer early career; salary per year.", roles: ["Software Engineer"], minimumSalary: 60000 }),
+    tailoring: { track: "auto", themeId: null, coverLetter: false },
+  }));
+});

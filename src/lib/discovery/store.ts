@@ -42,7 +42,7 @@ export async function retryScan(id: string, now = new Date()): Promise<void> {
     await scanLock(tx); await recoverExpired(tx, now);
     if (await tx.discoveryScan.findFirst({ where: { status: { in: ACTIVE } } })) throw new ActionError("A discovery scan is already waiting or running.");
     const row = await tx.discoveryScan.findUnique({ where: { id } });
-    if (!row || !["FAILED", "INTERRUPTED"].includes(row.status)) throw new ActionError("Only failed or interrupted scans can be retried.");
+    if (!row || !["FAILED", "INTERRUPTED", "CANCELLED"].includes(row.status)) throw new ActionError("Only failed, interrupted or cancelled scans can be retried.");
     await tx.discoveryScan.update({ where: { id }, data: { status: "QUEUED", manual: true, owner: null, leaseUntil: null, error: null, finishedAt: null } });
   });
 }
@@ -53,6 +53,7 @@ export async function claimScan(now = new Date()) {
     await scanLock(tx); await recoverExpired(tx, now);
     const control = await tx.discoveryControl.findUnique({ where: { id: "discovery" } });
     const config = configFrom(control?.config);
+    if (config.paused) return null;
     const allowed = discoveryAllowed(config, control?.sessionUntil ?? null, now);
     if (control && allowed && (!control.nextTickAt || control.nextTickAt <= now)) {
       await tx.discoveryControl.update({ where: { id: control.id }, data: { nextTickAt: followingTick(config, now) } });
